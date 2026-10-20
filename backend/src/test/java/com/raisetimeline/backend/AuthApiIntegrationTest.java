@@ -97,7 +97,7 @@ class AuthApiIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accessToken").isString())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.expiresIn").value(1800))
+                .andExpect(jsonPath("$.expiresIn").value(900))
                 .andExpect(jsonPath("$.user.id").isNumber())
                 .andExpect(jsonPath("$.user.handle").value("tamura_01"))
                 .andExpect(jsonPath("$.user.displayName").value("田村"))
@@ -246,13 +246,14 @@ class AuthApiIntegrationTest {
     }
 
     @Test
-    void logoutReturns204ForAuthenticatedUserAndRequiresToken() throws Exception {
+    void logoutReturns204WithOrWithoutAccessToken() throws Exception {
         String token = accessToken(signup("tamura@example.com", "tamura"));
 
         mockMvc.perform(post("/api/auth/logout").header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isNoContent());
+        // アクセストークンが期限切れでもログアウトできるよう、認証は不要
         mockMvc.perform(post("/api/auth/logout"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isNoContent());
     }
 
     // ---- token verification ----
@@ -271,12 +272,14 @@ class AuthApiIntegrationTest {
                 + (valid.endsWith("AA") ? "BB" : "AA");
         Instant now = Instant.now();
         String expired = jwt(jwtEncoder, "raisetimeline", now.minusSeconds(7200), now.minusSeconds(3600));
+        // 期限を数秒過ぎただけでも拒否する(時計ずれの許容を付けていない)
+        String justExpired = jwt(jwtEncoder, "raisetimeline", now.minusSeconds(60), now.minusSeconds(5));
         String wrongIssuer = jwt(jwtEncoder, "someone-else", now, now.plusSeconds(600));
         NimbusJwtEncoder otherKeyEncoder = new NimbusJwtEncoder(new ImmutableSecret<>(new SecretKeySpec(
                 "another-secret-another-secret-0123456789".getBytes(StandardCharsets.UTF_8), "HmacSHA256")));
         String foreignSignature = jwt(otherKeyEncoder, "raisetimeline", now, now.plusSeconds(600));
 
-        for (String token : List.of("not-a-jwt", tampered, expired, wrongIssuer, foreignSignature)) {
+        for (String token : List.of("not-a-jwt", tampered, expired, justExpired, wrongIssuer, foreignSignature)) {
             mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, bearer(token)))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
@@ -294,10 +297,12 @@ class AuthApiIntegrationTest {
     }
 
     @Test
-    void doesNotUseSessionsOrCookies() throws Exception {
+    void doesNotUseSessionsAndOnlySetsTheRefreshTokenCookie() throws Exception {
         MvcResult result = signup("tamura@example.com", "tamura");
 
         assertThat(result.getRequest().getSession(false)).isNull();
-        assertThat(result.getResponse().getCookies()).isEmpty();
+        assertThat(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE))
+                .hasSize(1)
+                .allSatisfy(header -> assertThat(header).startsWith("refresh_token="));
     }
 }
