@@ -4,7 +4,7 @@
 
 X（旧Twitter）に似た構成だが、**インプレッション数を表示しない**・**リツイート（リポスト）を作らない**ことを差別化ポイントとする。数字を競わず、文章や画像を気軽に投稿できる場所を目指す。受講生・個人が複数人で使うことを前提に設計し、第三者の投稿にも、いいね・コメントができる。
 
-React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像保存の AWS S3 で構成する予定。**現在は設計フェーズで、アプリのコードはまだない**。要件定義書・機能定義書・インフラ構成図が `docs/` にある。
+React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像保存の AWS S3 で構成する予定。**現在は、認証（ユーザー登録・ログイン）のバックエンドだけ実装済み**。要件定義書・機能定義書・インフラ構成図が `docs/` にある。
 
 ## 現在の状況
 
@@ -14,7 +14,8 @@ React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像�
 | 機能一覧（23機能） | 作成済み |
 | 機能定義書（7本） | 作成済み（API・DBは仮置き。各文書の「未決事項」に残課題あり） |
 | インフラ構成図 | 作成済み（AWSで構築するかは未決。前提構成として作成） |
-| バックエンド / フロントエンドの実装 | 未着手 |
+| バックエンドの実装 | 認証（F-01 登録・F-02 ログイン/ログアウト）のみ実装済み。他機能は未着手 |
+| フロントエンドの実装 | 未着手 |
 
 ## 主な機能
 
@@ -37,12 +38,12 @@ React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像�
 | 領域 | 採用 |
 | --- | --- |
 | フロントエンド | React（TypeScript を使うかは未決。推奨は採用） |
-| バックエンド | Spring Boot（Java）。REST API、認証は Spring Security |
-| データベース | PostgreSQL（AWS RDS）。ユーザー検索に `pg_trgm` を使う |
+| バックエンド | Spring Boot 4.0.8（Java 25、Gradle）。REST API、認証は Spring Security + JWT（アクセストークンを Bearer ヘッダーで送る）、DBアクセスは MyBatis、スキーマ管理は Flyway |
+| データベース | PostgreSQL 16（AWS RDS）。ユーザー検索に `pg_trgm` を使う |
 | 画像ストレージ | AWS S3。署名付きURLでブラウザから直接アップロード・取得 |
 | 実行環境 | AWS EC2 + ALB（構築するかは未決） |
 
-バージョンは実装開始時に決め、この表と要件定義書の「8. 制約・前提条件」に反映する。
+バックエンドのバージョンは決定済み（Spring Boot 4.0.8 は MyBatis スターターに対応する最新）。フロントエンドのバージョンは実装開始時に決め、この表と要件定義書の「8. 制約・前提条件」に反映する。
 
 ## 画面
 
@@ -90,11 +91,11 @@ docs/       要件定義書・機能一覧・機能定義書・インフラ構�
 README.md
 ```
 
-実装を始めたあとの予定（task-management と同じ構成）：
+実装済みの `backend/` に加え、今後次の構成にする（task-management と同じ構成）：
 
 ```
-backend/    Spring Boot API
-frontend/   React フロントエンド
+backend/    Spring Boot API（実装済み）
+frontend/   React フロントエンド（未着手）
 infra/      インフラ定義（構築する場合）
 docs/
 ```
@@ -146,7 +147,7 @@ docs/
 | `dev-server-startup` | バックエンド・フロントエンド・PostgreSQL をデフォルトポートで起動する。ポート競合時は別ポートに逃げず、既存プロセスを止める |
 | `quality-check` | フロントの lint、バックエンドのレビュー、Terraform の確認、ドキュメントと実装の整合性チェック |
 
-どちらも task-management のパス・パッケージ名（`com.taskmanagement.backend` など）を前提に書かれている。実装を始めるときに、このリポジトリの構成に合わせて直す。
+バックエンドに関する記述は、このリポジトリの構成（`com.raisetimeline.backend`、MyBatis、Vite プロキシ前提）に合わせて直した。`quality-check` のフロントエンド・ドキュメント整合性・Terraform の節は、各実装を始めるときに直す（ドキュメントのパスは `docs/00_…` 形式で、`docs/requirements/` ではない）。
 
 ## 参考
 

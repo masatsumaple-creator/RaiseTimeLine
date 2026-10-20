@@ -24,9 +24,10 @@ description: Start this project's backend (Spring Boot), frontend (Vite), and Po
 
 **理由:** ポート番号は複数箇所にハードコードされた前提として使われている。
 - フロントエンド: `frontend/.env.local` の `VITE_API_BASE_URL`（デフォルト `http://localhost:8080`）
-- バックエンド: `backend/src/main/java/com/taskmanagement/backend/config/CorsConfig.java` の `allowedOrigins("http://localhost:5173")`
+- バックエンド: CORS設定は持たない。開発時は Vite の `/api` プロキシ（target `http://localhost:8080`）で同一オリジン化し、本番（ALB 配下の同一オリジン）と同じ挙動にする
+- DB接続: `.env.example` / `backend/src/main/resources/application.yml` の `localhost:5432`
 
-ここでポート番号がずれると、CORSエラーやAPI疎通失敗など、コードとは無関係な原因で動作確認が壊れる。したがって「空いているポートを探して使う」のではなく「デフォルトポートを空ける」方針を取る。
+ここでポート番号がずれると、API疎通失敗やDB接続エラーなど、コードとは無関係な原因で動作確認が壊れる。したがって「空いているポートを探して使う」のではなく「デフォルトポートを空ける」方針を取る。
 
 ## 手順（Windows / PowerShell）
 
@@ -44,17 +45,20 @@ cd backend
 
 frontend（5173）、PostgreSQL（5432）についても同様に、`Get-NetTCPConnection -LocalPort <port>` でプロセスを特定し、`Stop-Process` で停止してから起動し直す。
 
+5432 を別プロジェクトの Docker コンテナが掴んでいる場合、`Get-NetTCPConnection` に出るのは `com.docker.backend` / `wslrelay` で、プロセスを殺しても解決しない。`docker ps` で該当コンテナを特定し `docker stop <名前>` で止める（他プロジェクトのコンテナなので、止める前にユーザーに確認する）。ポート公開に失敗して作られたコンテナはポートが空のまま残るため、`docker compose up -d --force-recreate db` で作り直す。
+
 ## 起動確認
 
 起動後は以下で疎通確認する。
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/tasks
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/auth/me
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173/
 ```
 
-いずれも `200` が返ることを確認する。バックグラウンドで起動する場合はログ（stdout/stderr）を監視し、`Started BackendApplication`（backend）や起動完了ログ（frontend）を確認してから疎通チェックに進む。
+backend は未ログインの `/api/auth/me` が `401`（サーバーが応答している印）、frontend は `200` が返ることを確認する。バックグラウンドで起動する場合はログ（stdout/stderr）を監視し、`Started BackendApplication`（backend）や起動完了ログ（frontend）を確認してから疎通チェックに進む。
 
 ## 関連
 
-- 本ルールの原文: [CLAUDE.md](../../CLAUDE.md) の「デフォルトポートの固定運用」セクション
+- 起動中の backend は、DB が起動していないと Flyway の接続エラーで終了する。先に `docker compose up -d db` を実行する
+- `JWT_SECRET`（32バイト以上）が未設定だと backend は起動しない。`./gradlew bootRun` は未設定のときだけ開発用の既定値を渡す（`backend/build.gradle`）。`java -jar` などで起動するときは環境変数で渡す

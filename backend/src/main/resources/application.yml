@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/raisetimeline}
+    username: ${DB_USER:raisetimeline}
+    password: ${DB_PASSWORD:raisetimeline}
+  flyway:
+    enabled: true
+
+app:
+  jwt:
+    # 署名鍵は必須(未設定なら起動に失敗する)。ローカル開発は gradle bootRun が既定値を渡す
+    secret: ${JWT_SECRET:}
+    expiration: ${JWT_EXPIRATION:30m}
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true

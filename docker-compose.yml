@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    container_name: raisetimeline-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-raisetimeline}
+      POSTGRES_USER: ${DB_USER:-raisetimeline}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-raisetimeline}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:

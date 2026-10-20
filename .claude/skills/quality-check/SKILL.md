@@ -72,13 +72,13 @@ npx tsc -b
 
 ## 2. バックエンド（`backend/`）
 
-Checkstyle/Spotless/PMD等の静的解析ツールは導入されていない（`backend/build.gradle.kts` のpluginsを確認して、導入されていれば代わりにそれを実行する）。導入されていない場合は、以下の観点でコードを直接読んでレビューする。新規ツール導入は依頼されない限り行わない。
+Checkstyle/Spotless/PMD等の静的解析ツールは導入されていない（`backend/build.gradle` のpluginsを確認して、導入されていれば代わりにそれを実行する）。導入されていない場合は、以下の観点でコードを直接読んでレビューする。新規ツール導入は依頼されない限り行わない。
 
-- **サービス層の有無**: `controller/` のクラスが `repository/` を直接操作していないか（[TaskController.java](../../../backend/src/main/java/com/taskmanagement/backend/controller/TaskController.java) など）。ビジネスロジック（並び替え・position再採番等）がController内に埋め込まれていないか。
+- **サービス層の有無**: `controller/` のクラスが `mapper/`（MyBatis）を直接操作していないか（[AuthController.java](../../../backend/src/main/java/com/raisetimeline/backend/controller/AuthController.java) など）。ビジネスロジックがController内に埋め込まれていないか。
 - **例外処理の一元化**: `@ControllerAdvice`/`@ExceptionHandler` があるか。なければ、`ResponseStatusException`や手動nullチェックがControllerごとにバラバラに書かれていないか。
-- **テストカバレッジ**: `backend/src/test/`配下にController/Repositoryのテストがあるか（`contextLoads()`のみでないか）。
-- **パッケージ構成の一貫性**: 全クラスが適切なパッケージ（`controller`/`service`/`repository`/`entity`/`dto`/`config`）に収まっているか。
-- **CORS設定**: [CorsConfig.java](../../../backend/src/main/java/com/taskmanagement/backend/config/CorsConfig.java) のoriginがハードコードされていないか（環境変数/プロファイル切り替え可能か）。
+- **テストカバレッジ**: `backend/src/test/`配下にController/Mapperを通した結合テスト（Testcontainers）があるか（`contextLoads()`のみでないか）。
+- **パッケージ構成の一貫性**: 全クラスが適切なパッケージ（`controller`/`service`/`mapper`/`entity`/`dto`/`config`/`exception`）に収まっているか。
+- **セキュリティ設定**: [SecurityConfig.java](../../../backend/src/main/java/com/raisetimeline/backend/config/SecurityConfig.java) で `/api/**` が既定で認証必須か、セッションがステートレスか、JWTの署名鍵（`JWT_SECRET`）がコードやymlにハードコードされていないか（`bootRun` の開発用既定値は `build.gradle` のみ）、署名・有効期限・発行者を検証しているか。CORSは開発時もViteプロキシで同一オリジン化する方針のため、CORS設定が増えていないか。
 - **バリデーション**: DTOに`@Valid`/Jakarta Bean Validationアノテーションが付与されているか。
 
 最後に `./gradlew test`（Windowsでは `.\gradlew.bat test`。Git Bashから`./gradlew`を直接呼ぶと`ClassNotFoundException: GradleWrapperMain`で失敗することがあるため、その場合はPowerShellの`.\gradlew.bat`を使う）を実行し、既存テストが壊れていないことを確認する。
