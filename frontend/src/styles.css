@@ -56,6 +56,8 @@ input[aria-invalid=true] { border-color: var(--danger); }
 .hint { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 .error { color: var(--danger); font-size: 13px; margin: 4px 0 0; }
 .error:empty { display: none; }
+/* フォーム全体のエラー(項目の下ではなく、送信ボタンの直前に出る) */
+form > .error { margin: 0 0 12px; }
 .auth { max-width: 420px; margin: 24px auto; }
 
 /* button */
