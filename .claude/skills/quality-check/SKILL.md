@@ -78,7 +78,7 @@ Checkstyle/Spotless/PMD等の静的解析ツールは導入されていない（
 - **例外処理の一元化**: `@ControllerAdvice`/`@ExceptionHandler` があるか。なければ、`ResponseStatusException`や手動nullチェックがControllerごとにバラバラに書かれていないか。
 - **テストカバレッジ**: `backend/src/test/`配下にController/Mapperを通した結合テスト（Testcontainers）があるか（`contextLoads()`のみでないか）。
 - **パッケージ構成の一貫性**: 全クラスが適切なパッケージ（`controller`/`service`/`mapper`/`entity`/`dto`/`config`/`exception`）に収まっているか。
-- **セキュリティ設定**: [SecurityConfig.java](../../../backend/src/main/java/com/raisetimeline/backend/config/SecurityConfig.java) で `/api/**` が既定で認証必須か、セッションがステートレスか、JWTの署名鍵（`JWT_SECRET`）がコードやymlにハードコードされていないか（`bootRun` の開発用既定値は `build.gradle` のみ）、署名・有効期限・発行者を検証しているか。CORSは開発時もViteプロキシで同一オリジン化する方針のため、CORS設定が増えていないか。
+- **セキュリティ設定**: [SecurityConfig.java](../../../backend/src/main/java/com/raisetimeline/backend/config/SecurityConfig.java) で `/api/**` が既定で認証必須か、セッションがステートレスか、JWTの署名鍵（`JWT_SECRET`）がコードやymlにハードコードされていないか（`bootRun` の開発用既定値は `build.gradle` のみ）、署名・有効期限・発行者を検証しているか。リフレッシュトークンは、Cookie が `HttpOnly`・`SameSite=Strict`・`Path=/api/auth` か（[RefreshCookies.java](../../../backend/src/main/java/com/raisetimeline/backend/controller/RefreshCookies.java)）、`Secure` が環境変数（`REFRESH_COOKIE_SECURE`）で切り替え可能か、DBにはハッシュだけを保存しレスポンスボディに生の値を含めていないか、ローテーションが1本の条件付きUPDATEで原子的か（[RefreshTokenService.java](../../../backend/src/main/java/com/raisetimeline/backend/service/RefreshTokenService.java)）。CORSは開発時もViteプロキシで同一オリジン化する方針のため、CORS設定が増えていないか。
 - **バリデーション**: DTOに`@Valid`/Jakarta Bean Validationアノテーションが付与されているか。
 
 最後に `./gradlew test`（Windowsでは `.\gradlew.bat test`。Git Bashから`./gradlew`を直接呼ぶと`ClassNotFoundException: GradleWrapperMain`で失敗することがあるため、その場合はPowerShellの`.\gradlew.bat`を使う）を実行し、既存テストが壊れていないことを確認する。

@@ -12,7 +12,13 @@ app:
   jwt:
     # 署名鍵は必須(未設定なら起動に失敗する)。ローカル開発は gradle bootRun が既定値を渡す
     secret: ${JWT_SECRET:}
-    expiration: ${JWT_EXPIRATION:30m}
+    # アクセストークンの有効期間。サーバー側で失効できないため短くし、延命はリフレッシュトークンで行う
+    expiration: ${JWT_EXPIRATION:15m}
+  refresh-token:
+    expiration: ${REFRESH_TOKEN_EXPIRATION:7d}
+    # Cookie の Secure 属性。本番(HTTPS)は true、HTTP の開発環境のみ false
+    cookie-secure: ${REFRESH_COOKIE_SECURE:false}
+    reuse-grace: ${REFRESH_REUSE_GRACE:10s}
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml

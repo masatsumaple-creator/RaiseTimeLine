@@ -4,7 +4,7 @@
 
 X（旧Twitter）に似た構成だが、**インプレッション数を表示しない**・**リツイート（リポスト）を作らない**ことを差別化ポイントとする。数字を競わず、文章や画像を気軽に投稿できる場所を目指す。受講生・個人が複数人で使うことを前提に設計し、第三者の投稿にも、いいね・コメントができる。
 
-React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像保存の AWS S3 で構成する予定。**現在は、認証（ユーザー登録・ログイン）のバックエンドだけ実装済み**。要件定義書・機能定義書・インフラ構成図が `docs/` にある。
+React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像保存の AWS S3 で構成する予定。**現在は、認証（ユーザー登録・ログイン）だけ、バックエンドと画面（ログイン・新規登録・ログイン後の簡易ページ）を実装済み**。要件定義書・機能定義書・インフラ構成図が `docs/` にある。
 
 ## 現在の状況
 
@@ -15,7 +15,7 @@ React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像�
 | 機能定義書（7本） | 作成済み（API・DBは仮置き。各文書の「未決事項」に残課題あり） |
 | インフラ構成図 | 作成済み（AWSで構築するかは未決。前提構成として作成） |
 | バックエンドの実装 | 認証（F-01 登録・F-02 ログイン/ログアウト）のみ実装済み。他機能は未着手 |
-| フロントエンドの実装 | 未着手 |
+| フロントエンドの実装 | 認証（S-01 ログイン・S-02 新規登録）とログイン後の簡易ページのみ実装済み。他の画面は未着手 |
 
 ## 主な機能
 
@@ -37,13 +37,13 @@ React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像�
 
 | 領域 | 採用 |
 | --- | --- |
-| フロントエンド | React（TypeScript を使うかは未決。推奨は採用） |
-| バックエンド | Spring Boot 4.0.8（Java 25、Gradle）。REST API、認証は Spring Security + JWT（アクセストークンを Bearer ヘッダーで送る）、DBアクセスは MyBatis、スキーマ管理は Flyway |
+| フロントエンド | React 19 + TypeScript 6 + Vite 8（react-router、テストは Vitest + Testing Library） |
+| バックエンド | Spring Boot 4.0.8（Java 25、Gradle）。REST API、認証は Spring Security + JWT（アクセストークンを Bearer ヘッダーで送り、リフレッシュトークンは HttpOnly Cookie）、DBアクセスは MyBatis、スキーマ管理は Flyway |
 | データベース | PostgreSQL 16（AWS RDS）。ユーザー検索に `pg_trgm` を使う |
 | 画像ストレージ | AWS S3。署名付きURLでブラウザから直接アップロード・取得 |
 | 実行環境 | AWS EC2 + ALB（構築するかは未決） |
 
-バックエンドのバージョンは決定済み（Spring Boot 4.0.8 は MyBatis スターターに対応する最新）。フロントエンドのバージョンは実装開始時に決め、この表と要件定義書の「8. 制約・前提条件」に反映する。
+バージョンは決定済み（Spring Boot 4.0.8 は MyBatis スターターに対応する最新）。変えるときは、この表と要件定義書の「8. 制約・前提条件」に反映する。
 
 ## 画面
 
@@ -95,7 +95,7 @@ README.md
 
 ```
 backend/    Spring Boot API（実装済み）
-frontend/   React フロントエンド（未着手）
+frontend/   React フロントエンド（認証画面のみ実装済み）
 infra/      インフラ定義（構築する場合）
 docs/
 ```
