@@ -1,5 +1,6 @@
 package com.raisetimeline.backend.controller;
 
+import com.raisetimeline.backend.dto.AuthResponse;
 import com.raisetimeline.backend.dto.LoginRequest;
 import com.raisetimeline.backend.dto.SignupRequest;
 import com.raisetimeline.backend.dto.UserResponse;
@@ -7,9 +8,7 @@ import com.raisetimeline.backend.entity.User;
 import com.raisetimeline.backend.exception.ApiException;
 import com.raisetimeline.backend.service.AppUserDetails;
 import com.raisetimeline.backend.service.AuthService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
+import com.raisetimeline.backend.service.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,9 +17,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,55 +32,41 @@ public class AuthController {
     private static final String LOGIN_FAILED_MESSAGE = "メールアドレスまたはパスワードが正しくありません";
 
     private final AuthService authService;
+    private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final SecurityContextRepository securityContextRepository;
 
     public AuthController(
-            AuthService authService,
-            AuthenticationManager authenticationManager,
-            SecurityContextRepository securityContextRepository) {
+            AuthService authService, JwtService jwtService, AuthenticationManager authenticationManager) {
         this.authService = authService;
+        this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
-        this.securityContextRepository = securityContextRepository;
     }
 
     @PostMapping("/signup")
-    public ResponseEntity<UserResponse> signup(
-            @Valid @RequestBody SignupRequest body, HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<AuthResponse> signup(@Valid @RequestBody SignupRequest body) {
+        // 登録直後はそのままログイン状態(トークン発行済み)にする
         User user = authService.signup(body);
-        // 登録直後はそのままログイン状態にする
-        establishSession(authenticate(body.email(), body.password()), request, response);
-        return ResponseEntity.status(HttpStatus.CREATED).body(UserResponse.from(user));
+        return ResponseEntity.status(HttpStatus.CREATED).body(AuthResponse.of(jwtService.issue(user.getId()), user));
     }
 
     @PostMapping("/login")
-    public UserResponse login(
-            @Valid @RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
+    public AuthResponse login(@Valid @RequestBody LoginRequest body) {
         Authentication authentication = authenticate(body.email(), body.password());
-        establishSession(authentication, request, response);
         User user = authService.findById(((AppUserDetails) authentication.getPrincipal()).getId());
-        return UserResponse.from(user);
+        return AuthResponse.of(jwtService.issue(user.getId()), user);
     }
 
+    /** トークンはサーバー側で失効できないため、ログアウトはクライアントがトークンを破棄する。 */
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletRequest request) {
-        HttpSession session = request.getSession(false);
-        if (session != null) {
-            session.invalidate();
-        }
-        SecurityContextHolder.clearContext();
+    public ResponseEntity<Void> logout() {
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/me")
-    public UserResponse me(@AuthenticationPrincipal AppUserDetails principal, HttpServletRequest request) {
-        User user = authService.findById(principal.getId());
+    public UserResponse me(@AuthenticationPrincipal Jwt jwt) {
+        User user = authService.findById(Long.valueOf(jwt.getSubject()));
         if (user == null) {
-            // セッションは有効だがユーザーが削除済みの場合
-            HttpSession session = request.getSession(false);
-            if (session != null) {
-                session.invalidate();
-            }
+            // トークンは有効だがユーザーが削除済みの場合
             throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "ログインが必要です");
         }
         return UserResponse.from(user);
@@ -96,16 +79,5 @@ public class AuthController {
             // メールの存在有無を悟らせないため、失敗理由に関わらず同一の応答にする
             throw new ApiException(HttpStatus.UNAUTHORIZED, LOGIN_FAILED, LOGIN_FAILED_MESSAGE);
         }
-    }
-
-    private void establishSession(Authentication authentication, HttpServletRequest request, HttpServletResponse response) {
-        // セッション固定化攻撃対策: 既存セッションがあれば ID を振り直す
-        if (request.getSession(false) != null) {
-            request.changeSessionId();
-        }
-        SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(authentication);
-        SecurityContextHolder.setContext(context);
-        securityContextRepository.saveContext(context, request, response);
     }
 }

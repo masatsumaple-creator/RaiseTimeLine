@@ -1,17 +1,22 @@
 package com.raisetimeline.backend;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
+import com.nimbusds.jose.jwk.source.ImmutableSecret;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -20,14 +25,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mock.web.MockHttpSession;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 @Import(TestcontainersConfiguration.class)
-@SpringBootTest
+@SpringBootTest(properties = "app.jwt.secret=test-only-jwt-secret-0123456789-abcdefghij")
 @AutoConfigureMockMvc
 class AuthApiIntegrationTest {
 
@@ -38,6 +49,9 @@ class AuthApiIntegrationTest {
 
     @Autowired
     JdbcTemplate jdbc;
+
+    @Autowired
+    JwtEncoder jwtEncoder;
 
     @BeforeEach
     void cleanUsers() {
@@ -51,31 +65,47 @@ class AuthApiIntegrationTest {
     }
 
     private MvcResult signup(String email, String handle) throws Exception {
-        return mockMvc.perform(post("/api/auth/signup").with(csrf())
+        return mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(signupJson(email, "password1", handle, "テスト太郎")))
                 .andExpect(status().isCreated())
                 .andReturn();
     }
 
+    private static String accessToken(MvcResult result) throws Exception {
+        return JsonPath.read(result.getResponse().getContentAsString(StandardCharsets.UTF_8), "$.accessToken");
+    }
+
+    private static String bearer(String token) {
+        return "Bearer " + token;
+    }
+
+    private String jwt(JwtEncoder encoder, String issuer, Instant issuedAt, Instant expiresAt) {
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer(issuer).subject("1").issuedAt(issuedAt).expiresAt(expiresAt).build();
+        return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+                .getTokenValue();
+    }
+
     // ---- signup ----
 
     @Test
-    void signupCreatesUserAndLogsInImmediately() throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/auth/signup").with(csrf())
+    void signupCreatesUserAndReturnsUsableAccessToken() throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(signupJson("tamura@example.com", "password1", "tamura_01", "田村")))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.handle").value("tamura_01"))
-                .andExpect(jsonPath("$.displayName").value("田村"))
-                .andExpect(jsonPath("$.passwordHash").doesNotExist())
-                .andExpect(jsonPath("$.password").doesNotExist())
+                .andExpect(jsonPath("$.accessToken").isString())
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.expiresIn").value(1800))
+                .andExpect(jsonPath("$.user.id").isNumber())
+                .andExpect(jsonPath("$.user.handle").value("tamura_01"))
+                .andExpect(jsonPath("$.user.displayName").value("田村"))
+                .andExpect(jsonPath("$.user.passwordHash").doesNotExist())
+                .andExpect(jsonPath("$.user.password").doesNotExist())
                 .andReturn();
 
-        MockHttpSession session = (MockHttpSession) result.getRequest().getSession(false);
-        assertThat(session).isNotNull();
-        mockMvc.perform(get("/api/auth/me").session(session))
+        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, bearer(accessToken(result))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.handle").value("tamura_01"));
     }
@@ -92,7 +122,7 @@ class AuthApiIntegrationTest {
     void signupRejectsDuplicateEmailIgnoringCase() throws Exception {
         signup("tamura@example.com", "tamura");
 
-        mockMvc.perform(post("/api/auth/signup").with(csrf())
+        mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(signupJson("TAMURA@Example.com", "password1", "other_user", "別人")))
                 .andExpect(status().isConflict())
@@ -104,7 +134,7 @@ class AuthApiIntegrationTest {
     void signupRejectsDuplicateHandleIgnoringCase() throws Exception {
         signup("tamura@example.com", "Tamura");
 
-        mockMvc.perform(post("/api/auth/signup").with(csrf())
+        mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(signupJson("other@example.com", "password1", "tamura", "別人")))
                 .andExpect(status().isConflict())
@@ -119,7 +149,7 @@ class AuthApiIntegrationTest {
             List<Callable<Integer>> tasks = List.of(
                     () -> signupStatus("race@example.com", "racer_a"),
                     () -> signupStatus("race@example.com", "racer_b"));
-            List<Integer> statuses = new java.util.ArrayList<>();
+            List<Integer> statuses = new ArrayList<>();
             for (Future<Integer> f : pool.invokeAll(tasks)) {
                 statuses.add(f.get());
             }
@@ -131,7 +161,7 @@ class AuthApiIntegrationTest {
     }
 
     private int signupStatus(String email, String handle) throws Exception {
-        return mockMvc.perform(post("/api/auth/signup").with(csrf())
+        return mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(signupJson(email, "password1", handle, "競合")))
                 .andReturn().getResponse().getStatus();
@@ -151,7 +181,7 @@ class AuthApiIntegrationTest {
     })
     void signupRejectsInvalidInput(String ignoredName, String email, String password, String handle,
                                    String displayName, String invalidField) throws Exception {
-        mockMvc.perform(post("/api/auth/signup").with(csrf())
+        mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(signupJson(email, password, handle, displayName)))
                 .andExpect(status().isBadRequest())
@@ -165,7 +195,7 @@ class AuthApiIntegrationTest {
         String password64 = "a".repeat(63) + "1";
         String name50 = "あ".repeat(50);
 
-        mockMvc.perform(post("/api/auth/signup").with(csrf())
+        mockMvc.perform(post("/api/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(signupJson("edge@example.com", password64, handle30, name50)))
                 .andExpect(status().isCreated());
@@ -174,12 +204,18 @@ class AuthApiIntegrationTest {
     // ---- login / logout / me ----
 
     @Test
-    void loginSucceedsWithCorrectCredentialsIgnoringEmailCase() throws Exception {
+    void loginReturnsUsableTokenIgnoringEmailCase() throws Exception {
         signup("tamura@example.com", "tamura");
 
-        mockMvc.perform(post("/api/auth/login").with(csrf())
+        MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"Tamura@Example.com\",\"password\":\"password1\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.user.handle").value("tamura"))
+                .andReturn();
+
+        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, bearer(accessToken(result))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.handle").value("tamura"));
     }
@@ -191,17 +227,18 @@ class AuthApiIntegrationTest {
         for (String body : List.of(
                 "{\"email\":\"tamura@example.com\",\"password\":\"wrongpass1\"}",
                 "{\"email\":\"nobody@example.com\",\"password\":\"password1\"}")) {
-            mockMvc.perform(post("/api/auth/login").with(csrf())
+            mockMvc.perform(post("/api/auth/login")
                             .contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("LOGIN_FAILED"))
-                    .andExpect(jsonPath("$.message").value(LOGIN_FAILED_MESSAGE));
+                    .andExpect(jsonPath("$.message").value(LOGIN_FAILED_MESSAGE))
+                    .andExpect(jsonPath("$.accessToken").doesNotExist());
         }
     }
 
     @Test
     void loginRejectsEmptyFieldsWith400() throws Exception {
-        mockMvc.perform(post("/api/auth/login").with(csrf())
+        mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"\",\"password\":\"\"}"))
                 .andExpect(status().isBadRequest())
@@ -209,49 +246,58 @@ class AuthApiIntegrationTest {
     }
 
     @Test
-    void loginRegeneratesSessionIdToPreventFixation() throws Exception {
-        signup("tamura@example.com", "tamura");
-        MockHttpSession preLoginSession = new MockHttpSession();
-        String idBefore = preLoginSession.getId();
+    void logoutReturns204ForAuthenticatedUserAndRequiresToken() throws Exception {
+        String token = accessToken(signup("tamura@example.com", "tamura"));
 
-        mockMvc.perform(post("/api/auth/login").with(csrf()).session(preLoginSession)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\":\"tamura@example.com\",\"password\":\"password1\"}"))
-                .andExpect(status().isOk());
-
-        assertThat(preLoginSession.getId()).isNotEqualTo(idBefore);
-    }
-
-    @Test
-    void logoutInvalidatesSession() throws Exception {
-        MvcResult signedUp = signup("tamura@example.com", "tamura");
-        MockHttpSession session = (MockHttpSession) signedUp.getRequest().getSession(false);
-
-        mockMvc.perform(post("/api/auth/logout").with(csrf()).session(session))
+        mockMvc.perform(post("/api/auth/logout").header(HttpHeaders.AUTHORIZATION, bearer(token)))
                 .andExpect(status().isNoContent());
-
-        assertThat(session.isInvalid()).isTrue();
-        mockMvc.perform(get("/api/auth/me"))
+        mockMvc.perform(post("/api/auth/logout"))
                 .andExpect(status().isUnauthorized());
     }
 
-    // ---- authorization / CSRF ----
+    // ---- token verification ----
 
     @Test
-    void meAndLogoutRequireAuthentication() throws Exception {
+    void meRequiresAuthentication() throws Exception {
         mockMvc.perform(get("/api/auth/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
-        mockMvc.perform(post("/api/auth/logout").with(csrf()))
-                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    void stateChangingRequestWithoutCsrfTokenIsForbidden() throws Exception {
-        mockMvc.perform(post("/api/auth/signup")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(signupJson("tamura@example.com", "password1", "tamura", "田村")))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    void meRejectsMalformedTamperedExpiredAndForeignTokens() throws Exception {
+        String valid = accessToken(signup("tamura@example.com", "tamura"));
+        String tampered = valid.substring(0, valid.length() - 2)
+                + (valid.endsWith("AA") ? "BB" : "AA");
+        Instant now = Instant.now();
+        String expired = jwt(jwtEncoder, "raisetimeline", now.minusSeconds(7200), now.minusSeconds(3600));
+        String wrongIssuer = jwt(jwtEncoder, "someone-else", now, now.plusSeconds(600));
+        NimbusJwtEncoder otherKeyEncoder = new NimbusJwtEncoder(new ImmutableSecret<>(new SecretKeySpec(
+                "another-secret-another-secret-0123456789".getBytes(StandardCharsets.UTF_8), "HmacSHA256")));
+        String foreignSignature = jwt(otherKeyEncoder, "raisetimeline", now, now.plusSeconds(600));
+
+        for (String token : List.of("not-a-jwt", tampered, expired, wrongIssuer, foreignSignature)) {
+            mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+        }
+    }
+
+    @Test
+    void meReturns401WhenUserNoLongerExists() throws Exception {
+        String token = accessToken(signup("tamura@example.com", "tamura"));
+        jdbc.update("DELETE FROM users");
+
+        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void doesNotUseSessionsOrCookies() throws Exception {
+        MvcResult result = signup("tamura@example.com", "tamura");
+
+        assertThat(result.getRequest().getSession(false)).isNull();
+        assertThat(result.getResponse().getCookies()).isEmpty();
     }
 }

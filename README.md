@@ -38,7 +38,7 @@ React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像�
 | 領域 | 採用 |
 | --- | --- |
 | フロントエンド | React（TypeScript を使うかは未決。推奨は採用） |
-| バックエンド | Spring Boot 4.0.8（Java 25、Gradle）。REST API、認証は Spring Security（セッションCookie + CSRF）、DBアクセスは MyBatis、スキーマ管理は Flyway |
+| バックエンド | Spring Boot 4.0.8（Java 25、Gradle）。REST API、認証は Spring Security + JWT（アクセストークンを Bearer ヘッダーで送る）、DBアクセスは MyBatis、スキーマ管理は Flyway |
 | データベース | PostgreSQL 16（AWS RDS）。ユーザー検索に `pg_trgm` を使う |
 | 画像ストレージ | AWS S3。署名付きURLでブラウザから直接アップロード・取得 |
 | 実行環境 | AWS EC2 + ALB（構築するかは未決） |
