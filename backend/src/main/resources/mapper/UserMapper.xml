@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.raisetimeline.backend.mapper.UserMapper">
+
+    <sql id="userColumns">
+        id, email, password_hash, handle, display_name, bio, avatar_key, created_at
+    </sql>
+
+    <insert id="insert" parameterType="com.raisetimeline.backend.entity.User"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO users (email, password_hash, handle, display_name)
+        VALUES (#{email}, #{passwordHash}, #{handle}, #{displayName})
+    </insert>
+
+    <select id="existsByEmail" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM users WHERE lower(email) = lower(#{email}))
+    </select>
+
+    <select id="existsByHandle" resultType="boolean">
+        SELECT EXISTS (SELECT 1 FROM users WHERE lower(handle) = lower(#{handle}))
+    </select>
+
+    <select id="findByEmail" resultType="com.raisetimeline.backend.entity.User">
+        SELECT <include refid="userColumns"/> FROM users WHERE lower(email) = lower(#{email})
+    </select>
+
+    <select id="findById" resultType="com.raisetimeline.backend.entity.User">
+        SELECT <include refid="userColumns"/> FROM users WHERE id = #{id}
+    </select>
+</mapper>
