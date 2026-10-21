@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { TimelineTab } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { NewPostsBar } from '../components/NewPostsBar'
@@ -29,7 +29,8 @@ export function TimelinePage() {
   const toast = useToast()
   const [tab, setTab] = useState<TimelineTab>('following')
   const timeline = useTimeline(tab)
-  const newPosts = useNewPostsPolling(tab, timeline.items[0]?.id ?? 0, timeline.status === 'ready')
+  const known = useMemo(() => new Set(timeline.items.map((p) => p.id)), [timeline.items])
+  const newPosts = useNewPostsPolling(tab, timeline.baseId, known, timeline.status === 'ready')
 
   // 一覧の末尾が見えたら、続きを自動で読み込む(無限スクロール)
   const sentinel = useRef<HTMLDivElement>(null)
@@ -76,7 +77,7 @@ export function TimelinePage() {
   return (
     <>
       <h1 className="sr-only">タイムライン</h1>
-      <PostForm onCreated={(post) => timeline.prepend([post])} />
+      <PostForm onCreated={timeline.prependOwn} />
 
       <div className="tabs" role="tablist" aria-label="タイムラインの種類">
         {TABS.map(({ id, label }) => (

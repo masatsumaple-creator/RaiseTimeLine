@@ -414,24 +414,68 @@ describe('新着の通知', () => {
     expect(screen.queryByRole('button', { name: /新しい投稿を表示/ })).not.toBeInTheDocument()
   })
 
-  it('自分が投稿して既に一覧にあるものは、新着として数えない', async () => {
-    let newCalls = 0
-    await renderWithClock({
+  async function postOwn(text: string) {
+    fireEvent.change(screen.getByLabelText('いまどうしてる?'), { target: { value: text } })
+    fireEvent.click(screen.getByRole('button', { name: '投稿する' }))
+    await screen.findByText(text)
+  }
+
+  it('自分が投稿して既に一覧にあるものだけなら、新着として数えない', async () => {
+    const { server } = await renderWithClock({
       'POST /api/posts': () => json(201, post(2, '自分の新規投稿')),
+      [NEW]: () => json(200, { count: 1, hasMore: false, items: [post(2, '自分の新規投稿')] }),
+    })
+
+    await postOwn('自分の新規投稿')
+    await waitForPoll()
+
+    // 基準は自分の投稿では進まない(sinceId=1 のまま)。結果は自分の投稿だけなのでバーは出ない
+    expect(server.count(NEW)).toBe(1)
+    expect(screen.queryByRole('button', { name: /新しい投稿を表示/ })).not.toBeInTheDocument()
+  })
+
+  it('自分の投稿の直前に届いた他のユーザーの投稿も、新着として見つけて正しい順に足す', async () => {
+    const { server, user } = await renderWithClock({
+      'POST /api/posts': () => json(201, post(3, '自分の新規投稿')),
+      // 他のユーザーの投稿(id=2)の後に、自分が投稿(id=3)した
+      [NEW]: () =>
+        json(200, { count: 2, hasMore: false, items: [post(3, '自分の新規投稿'), post(2, '他のユーザーの投稿', { author: OTHER })] }),
+    })
+
+    await postOwn('自分の新規投稿')
+    await waitForPoll()
+
+    // 自分の投稿は数えず、他のユーザーの投稿だけが新着
+    const bar = await screen.findByRole('button', { name: '1件の新しい投稿を表示' })
+    expect(server.count(NEW)).toBe(1)
+
+    await user.click(bar)
+
+    // 並び順は id の新しい順: 自分の投稿(3)、他のユーザーの投稿(2)、既存の投稿(1)
+    expect(screen.getAllByRole('article').map((a) => a.textContent)).toEqual([
+      expect.stringContaining('自分の新規投稿'),
+      expect.stringContaining('他のユーザーの投稿'),
+      expect.stringContaining('既存の投稿'),
+    ])
+    expect(screen.queryByRole('button', { name: /新しい投稿を表示/ })).not.toBeInTheDocument()
+  })
+
+  it('新着バーを押して一覧に足したあとは、足した投稿の次から確認する', async () => {
+    let calls = 0
+    const { server, user } = await renderWithClock({
       [NEW]: () => {
-        newCalls++
-        return json(200, { count: 1, hasMore: false, items: [post(2, '自分の新規投稿')] })
+        calls++
+        return json(200, { count: 1, hasMore: false, items: [post(2, '新着の投稿', { author: OTHER })] })
       },
       'GET /api/timeline/new?tab=following&sinceId=2': () => json(200, { count: 0, hasMore: false, items: [] }),
     })
 
-    fireEvent.change(screen.getByLabelText('いまどうしてる?'), { target: { value: '自分の新規投稿' } })
-    fireEvent.click(screen.getByRole('button', { name: '投稿する' }))
-    await screen.findByText('自分の新規投稿')
+    await waitForPoll()
+    await user.click(await screen.findByRole('button', { name: '1件の新しい投稿を表示' }))
     await waitForPoll()
 
-    // 投稿後は基準が id=2 に進むので、sinceId=1 への問い合わせは起きず、バーも出ない
-    expect(newCalls).toBe(0)
+    expect(calls).toBe(1)
+    expect(server.count('GET /api/timeline/new?tab=following&sinceId=2')).toBe(1)
     expect(screen.queryByRole('button', { name: /新しい投稿を表示/ })).not.toBeInTheDocument()
   })
 })

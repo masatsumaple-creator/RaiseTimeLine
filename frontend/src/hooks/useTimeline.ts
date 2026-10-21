@@ -9,18 +9,20 @@ interface State {
   tab: TimelineTab
   items: Post[]
   nextCursor: string | null
+  /** サーバーから受け取った一覧の先頭の投稿 id(新着確認の基準)。自分の投稿では進めない */
+  baseId: number
   status: Status
   more: MoreStatus
 }
 
 function initialState(tab: TimelineTab): State {
-  return { tab, items: [], nextCursor: null, status: 'loading', more: 'idle' }
+  return { tab, items: [], nextCursor: null, baseId: 0, status: 'loading', more: 'idle' }
 }
 
-/** 既に一覧にある投稿(id 重複)を除いて、新しい投稿を先頭に足す。 */
-function prependUnique(items: Post[], added: Post[]): Post[] {
+/** 既に一覧にある投稿(id 重複)を除いて足し、並び順(id の新しい順)を保つ。 */
+function mergeNewer(items: Post[], added: Post[]): Post[] {
   const known = new Set(items.map((p) => p.id))
-  return [...added.filter((p) => !known.has(p.id)), ...items]
+  return [...added.filter((p) => !known.has(p.id)), ...items].sort((a, b) => b.id - a.id)
 }
 
 /** タイムライン 1 タブ分の一覧。先頭ページの取得、続きの取得(無限スクロール用)、投稿の追加・差し替え・削除を持つ。 */
@@ -32,7 +34,9 @@ export function useTimeline(tab: TimelineTab) {
   if (state.tab !== tab) setState(initialState(tab))
 
   const applyFirstPage = useCallback((forTab: TimelineTab, items: Post[], nextCursor: string | null) => {
-    setState((s) => (s.tab === forTab ? { ...s, items, nextCursor, status: 'ready', more: 'idle' } : s))
+    setState((s) =>
+      s.tab === forTab ? { ...s, items, nextCursor, baseId: items[0]?.id ?? 0, status: 'ready', more: 'idle' } : s,
+    )
   }, [])
 
   useEffect(() => {
@@ -94,8 +98,21 @@ export function useTimeline(tab: TimelineTab) {
       })
   }, [tab, cursor])
 
+  /** サーバーから受け取った新着を先頭側に足す。新着確認の基準も進める。 */
   const prepend = useCallback((posts: Post[]) => {
-    setState((s) => ({ ...s, items: prependUnique(s.items, posts) }))
+    setState((s) => ({
+      ...s,
+      items: mergeNewer(s.items, posts),
+      baseId: Math.max(s.baseId, ...posts.map((p) => p.id)),
+    }))
+  }, [])
+
+  /**
+   * 自分の投稿を先頭に足す。新着確認の基準は進めない。
+   * 進めると、自分の投稿の直前に届いた他のユーザーの投稿が、新着として見つからなくなる。
+   */
+  const prependOwn = useCallback((post: Post) => {
+    setState((s) => ({ ...s, items: mergeNewer(s.items, [post]) }))
   }, [])
 
   const replace = useCallback((post: Post) => {
@@ -108,6 +125,7 @@ export function useTimeline(tab: TimelineTab) {
 
   return {
     items: state.items,
+    baseId: state.baseId,
     status: state.status,
     more: state.more,
     hasNext: state.nextCursor !== null,
@@ -115,6 +133,7 @@ export function useTimeline(tab: TimelineTab) {
     refresh,
     retry,
     prepend,
+    prependOwn,
     replace,
     remove,
   }
