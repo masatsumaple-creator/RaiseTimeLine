@@ -85,6 +85,11 @@ input:focus, textarea:focus { outline: 2px solid #93b4f8; border-color: var(--ac
 .tab:hover { background: #f6f8fb; text-decoration: none; }
 .tab.on { color: var(--accent); border-bottom-color: var(--accent); }
 
+/* 新着バー: ヘッダー(ロゴ行 + Mock の帯)の下に張り付く */
+.new-posts-slot:not(:empty) { position: sticky; top: 76px; z-index: 5; text-align: center; margin-bottom: 12px; }
+.new-posts-bar { font: inherit; font-size: 14px; padding: 6px 18px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; cursor: pointer; box-shadow: 0 4px 16px rgba(0, 0, 0, .2); }
+.new-posts-bar:hover { background: var(--accent-d); }
+
 /* 投稿カード */
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px; cursor: pointer; }
 .card.detail { cursor: default; }

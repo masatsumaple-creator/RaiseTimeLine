@@ -77,6 +77,13 @@
       h('div', { class: 'header-in' }, h('a', { href: '#/', class: 'logo', text: 'RaiseTimeLine' }), search, nav),
       h('div', { class: 'banner' },
         h('span', { text: 'Mock(データはこのブラウザ内のみ・画面確認用)' }),
+        // 他のユーザーの投稿を再現する(複数端末の同期が無いので)。タイムラインに 30 秒以内に新着バーが出る
+        h('button', {
+          class: 'link', type: 'button', text: '他のユーザーの投稿を追加', onclick: () => {
+            const { user } = Store.createPostAsOther();
+            toast(user.displayName + ' さんが投稿しました(新着バーは 30 秒以内に出ます)');
+          },
+        }),
         h('button', {
           class: 'link', type: 'button', text: 'データをリセット', onclick: async () => {
             if (!(await confirmDialog('ダミーデータを初期状態に戻します。よろしいですか?', 'リセットする'))) return;
