@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.raisetimeline.backend.mapper.PostMapper">
+
+    <sql id="postColumns">
+        p.id, p.user_id, p.body, p.created_at, p.updated_at,
+        u.handle AS author_handle, u.display_name AS author_display_name, u.avatar_key AS author_avatar_key
+    </sql>
+
+    <insert id="insert" parameterType="com.raisetimeline.backend.entity.Post"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO posts (user_id, body)
+        VALUES (#{userId}, #{body})
+    </insert>
+
+    <select id="findById" resultType="com.raisetimeline.backend.entity.Post">
+        SELECT <include refid="postColumns"/>
+        FROM posts p JOIN users u ON u.id = p.user_id
+        WHERE p.id = #{id}
+    </select>
+
+    <update id="updateBody">
+        UPDATE posts SET body = #{body}, updated_at = now() WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM posts WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <select id="findPage" resultType="com.raisetimeline.backend.entity.Post">
+        SELECT <include refid="postColumns"/>
+        FROM posts p JOIN users u ON u.id = p.user_id
+        <where>
+            <if test="authorId != null">p.user_id = #{authorId}</if>
+            <if test="cursorId != null">
+                AND (p.created_at, p.id) &lt; (#{cursorCreatedAt}, #{cursorId})
+            </if>
+        </where>
+        ORDER BY p.created_at DESC, p.id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findNewerThan" resultType="com.raisetimeline.backend.entity.Post">
+        SELECT <include refid="postColumns"/>
+        FROM posts p JOIN users u ON u.id = p.user_id
+        <where>
+            p.id &gt; #{sinceId}
+            <if test="authorId != null">AND p.user_id = #{authorId}</if>
+        </where>
+        ORDER BY p.id DESC
+        LIMIT #{limit}
+    </select>
+</mapper>

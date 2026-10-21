@@ -21,6 +21,38 @@ export interface ApiErrorBody {
   fieldErrors?: Record<string, string>
 }
 
+export interface PostAuthor {
+  id: number
+  handle: string
+  displayName: string
+  avatarKey?: string
+}
+
+export interface Post {
+  id: number
+  body: string
+  /** ISO 8601 */
+  createdAt: string
+  /** 編集されていなければ null */
+  editedAt: string | null
+  author: PostAuthor
+}
+
+export type TimelineTab = 'following' | 'all'
+
+export interface TimelinePage {
+  items: Post[]
+  /** null なら最後のページ */
+  nextCursor: string | null
+}
+
+export interface NewPosts {
+  count: number
+  /** true: 件数が上限を超えていて、items と手元の一覧の間に欠落がある */
+  hasMore: boolean
+  items: Post[]
+}
+
 export interface SignupInput {
   email: string
   password: string

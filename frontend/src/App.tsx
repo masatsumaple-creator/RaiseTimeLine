@@ -1,10 +1,10 @@
 import { Route, Routes } from 'react-router'
 import { GuestOnly, RequireAuth } from './auth/RouteGuards'
 import { Layout } from './components/Layout'
-import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { SignupPage } from './pages/SignupPage'
+import { TimelinePage } from './pages/TimelinePage'
 
 export function App() {
   return (
@@ -15,7 +15,7 @@ export function App() {
           <Route path="/signup" element={<SignupPage />} />
         </Route>
         <Route element={<RequireAuth />}>
-          <Route index element={<HomePage />} />
+          <Route index element={<TimelinePage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>

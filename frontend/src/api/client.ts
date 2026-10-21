@@ -25,7 +25,7 @@ export class NetworkError extends Error {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST'
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   body?: unknown
   /** true: アクセストークンを付け、401 ならリフレッシュして 1 回だけ再試行する */
   auth?: boolean
