@@ -232,20 +232,31 @@
       me && me.id === user.id ? null : FollowButton(user.id));
   }
 
-  /* ---- 「もっと見る」付きの一覧 ---- */
+  /* ---- 無限スクロールの一覧: 末尾が画面に近づくと、続きを自動で読み込んで末尾に足す ---- */
   function pagedList(container, fetchPage, renderItem, emptyEl) {
+    if (container._stopPaging) container._stopPaging(); // 同じ場所を描き直すときは、前の監視をやめる
     const list = h('div', { class: 'list' });
-    const moreWrap = h('div', { class: 'more' });
-    container.replaceChildren(list, moreWrap);
+    const sentinel = h('div', { class: 'more muted', text: '読み込み中…' });
+    container.replaceChildren(list, sentinel);
     let count = 0;
+    let next = null;
+
+    const observer = new IntersectionObserver(entries => {
+      if (!sentinel.isConnected) { observer.disconnect(); return; } // 画面が切り替わった
+      if (next != null && entries.some(e => e.isIntersecting)) load(next);
+    }, { rootMargin: '300px' });
+    container._stopPaging = () => observer.disconnect();
+
     function load(cursor) {
       const { items, nextCursor } = fetchPage(cursor);
       items.forEach(it => list.append(renderItem(it)));
       count += items.length;
       if (!count && emptyEl) list.append(emptyEl);
-      moreWrap.replaceChildren(nextCursor == null ? '' : h('button', {
-        class: 'btn', type: 'button', text: 'もっと見る', onclick: () => load(nextCursor),
-      }));
+      next = nextCursor;
+      sentinel.hidden = next == null; // 最後のページまで読んだら、読み込み中の表示も消す
+      // 読み込み後も末尾が見えたままなら変化が通知されないので、観察し直して続けて読む
+      observer.disconnect();
+      if (next != null) observer.observe(sentinel);
     }
     load(null);
     return list;

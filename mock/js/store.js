@@ -1,6 +1,7 @@
 /* 状態操作。いいね数・コメント数などは列として持たず、都度数える(要件定義書 7 章) */
 (function () {
   const PAGE = 20;
+  const MAX_NEW = 50; // 新着として一度に返す最大件数
   const MAX_BODY = 280;
   const MAX_BIO = 160;
   const MAX_IMAGES = 4;
@@ -35,7 +36,7 @@
   }
 
   const Store = {
-    PAGE, MAX_BODY, MAX_BIO, MAX_IMAGES, MAX_SIZE, TYPES, len,
+    PAGE, MAX_NEW, MAX_BODY, MAX_BIO, MAX_IMAGES, MAX_SIZE, TYPES, len,
     persist,
     reset() { S = Data.reset(); },
     storageOk: true,
@@ -81,15 +82,40 @@
 
     /* ---- 投稿 ---- */
     post: (id) => S.posts.find(p => p.id === id) || null,
-    timeline(tab, cursor) {
+    /** タブに表示する投稿(フォロー中は、自分とフォロー先の投稿) */
+    tabPosts(tab) {
+      if (tab !== 'following') return S.posts;
       const me = S.session;
-      let posts = S.posts;
-      if (tab === 'following') {
-        const ids = new Set(S.follows.filter(f => f.follower === me).map(f => f.followee));
-        ids.add(me);
-        posts = posts.filter(p => ids.has(p.userId));
-      }
-      return postPage(posts, cursor);
+      const ids = new Set(S.follows.filter(f => f.follower === me).map(f => f.followee));
+      ids.add(me);
+      return S.posts.filter(p => ids.has(p.userId));
+    },
+    timeline(tab, cursor) {
+      return postPage(Store.tabPosts(tab), cursor);
+    },
+    /**
+     * sinceId(一覧の先頭の投稿 id)より新しい投稿を、新しい順に最大 MAX_NEW 件。
+     * 超える場合は hasMore が true(一覧との間に欠落ができるので、画面は一覧を取り直す)。
+     * 時刻ではなく id で判定する(id は単調に増える)。
+     */
+    newerThan(tab, sinceId) {
+      const rows = Store.tabPosts(tab).filter(p => p.id > sinceId).sort((a, b) => b.id - a.id);
+      const items = rows.slice(0, MAX_NEW);
+      return { count: items.length, hasMore: rows.length > MAX_NEW, items };
+    },
+    /** デモ用: 自分以外のユーザー(いればフォロー先)が投稿したことにする。新着バーの確認に使う */
+    createPostAsOther() {
+      const others = S.users.filter(u => u.id !== S.session && u.id !== 8);
+      const followed = others.filter(u => S.follows.some(f => f.follower === S.session && f.followee === u.id));
+      const pool = followed.length ? followed : others;
+      const user = pool[Math.floor(Math.random() * pool.length)];
+      const bodies = Data.BODIES;
+      const p = {
+        id: S.nextIds.post++, userId: user.id, body: bodies[Math.floor(Math.random() * bodies.length)],
+        createdAt: Date.now(), editedAt: null, images: [],
+      };
+      S.posts.push(p); persist();
+      return { post: p, user };
     },
     userPosts(uid, cursor) { return postPage(S.posts.filter(p => p.userId === uid), cursor); },
 
