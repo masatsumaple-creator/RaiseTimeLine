@@ -8,11 +8,11 @@ import { tokenStore } from './auth/tokenStore'
 import { ToastProvider } from './components/ToastProvider'
 import { apiError, json, noContent, SESSION, stubFetch, type Handler } from './test/fakeServer'
 
-const ME = SESSION.user
+const TIMELINE = 'GET /api/timeline?tab=following'
 
 const REFRESH_FAILS: Handler = () => apiError(401, 'INVALID_REFRESH_TOKEN', '期限切れ')
 const REFRESH_OK: Handler = () => json(200, SESSION)
-const ME_OK: Handler = () => json(200, ME)
+const EMPTY_TIMELINE: Handler = () => json(200, { items: [], nextCursor: null })
 
 function renderApp(path = '/') {
   return render(
@@ -47,23 +47,23 @@ describe('起動時の状態復元とガード', () => {
     expect(header.getByRole('link', { name: '新規登録' })).toHaveAttribute('href', '/signup')
   })
 
-  it('リフレッシュに成功すればログイン状態を復元し、ログイン後ページに ME の情報を表示する', async () => {
-    const server = stubFetch({ 'POST /api/auth/refresh': REFRESH_OK, 'GET /api/auth/me': ME_OK })
+  it('リフレッシュに成功すればログイン状態を復元し、ログイン後ページにタイムラインを表示する', async () => {
+    const server = stubFetch({ 'POST /api/auth/refresh': REFRESH_OK, [TIMELINE]: EMPTY_TIMELINE })
 
     renderApp('/')
 
-    expect(await screen.findByRole('heading', { name: 'ログインしました' })).toBeInTheDocument()
-    expect(await screen.findByText('@tamura')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'タイムライン' })).toBeInTheDocument()
+    expect(await screen.findByText('まだ投稿がありません。最初の投稿をしてみましょう。')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'ログアウト' })).toBeInTheDocument()
-    expect(server.calls.find((c) => c.path === '/api/auth/me')?.headers.Authorization).toBe('Bearer access-1')
+    expect(server.calls.find((c) => c.path === TIMELINE.slice(4))?.headers.Authorization).toBe('Bearer access-1')
   })
 
   it('ログイン済みでログイン画面・登録画面を開くと、ホームへ移動する', async () => {
-    stubFetch({ 'POST /api/auth/refresh': REFRESH_OK, 'GET /api/auth/me': ME_OK })
+    stubFetch({ 'POST /api/auth/refresh': REFRESH_OK, [TIMELINE]: EMPTY_TIMELINE })
 
     renderApp('/login')
 
-    expect(await screen.findByRole('heading', { name: 'ログインしました' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'タイムライン' })).toBeInTheDocument()
   })
 
   it('アクセストークンが期限切れでも、リフレッシュして自動で続行する', async () => {
@@ -71,13 +71,18 @@ describe('起動時の状態復元とガード', () => {
     const server = stubFetch({
       'POST /api/auth/refresh': () =>
         json(200, { ...SESSION, accessToken: ++refreshCalls === 1 ? 'access-1' : 'access-2' }),
-      'GET /api/auth/me': (req) =>
-        req.headers.Authorization === 'Bearer access-2' ? json(200, ME) : apiError(401, 'UNAUTHORIZED', '期限切れ'),
+      [TIMELINE]: (req) =>
+        req.headers.Authorization === 'Bearer access-2'
+          ? json(200, {
+              items: [{ id: 1, body: 'はじめての投稿', createdAt: new Date().toISOString(), editedAt: null, author: SESSION.user }],
+              nextCursor: null,
+            })
+          : apiError(401, 'UNAUTHORIZED', '期限切れ'),
     })
 
     renderApp('/')
 
-    expect(await screen.findByText('@tamura')).toBeInTheDocument()
+    expect(await screen.findByText('はじめての投稿')).toBeInTheDocument()
     expect(server.count('POST /api/auth/refresh')).toBe(2)
   })
 
@@ -85,7 +90,7 @@ describe('起動時の状態復元とガード', () => {
     let refreshCalls = 0
     stubFetch({
       'POST /api/auth/refresh': () => (++refreshCalls === 1 ? json(200, SESSION) : REFRESH_FAILS({} as never)),
-      'GET /api/auth/me': () => apiError(401, 'UNAUTHORIZED', '期限切れ'),
+      [TIMELINE]: () => apiError(401, 'UNAUTHORIZED', '期限切れ'),
     })
 
     renderApp('/')
@@ -107,7 +112,7 @@ describe('ログイン画面', () => {
     const server = stubFetch({
       'POST /api/auth/refresh': REFRESH_FAILS,
       'POST /api/auth/login': () => json(200, SESSION),
-      'GET /api/auth/me': ME_OK,
+      [TIMELINE]: EMPTY_TIMELINE,
     })
     const user = userEvent.setup()
     renderApp('/login')
@@ -132,7 +137,7 @@ describe('ログイン画面', () => {
     await user.type(screen.getByLabelText('パスワード'), 'password1')
     await user.click(screen.getByRole('button', { name: 'ログイン' }))
 
-    expect(await screen.findByRole('heading', { name: 'ログインしました' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'タイムライン' })).toBeInTheDocument()
     expect(server.calls.find((c) => c.path === '/api/auth/login')?.body).toEqual({
       email: 'tamura@example.com',
       password: 'password1',
@@ -162,7 +167,7 @@ describe('ログイン画面', () => {
     stubFetch({
       'POST /api/auth/refresh': REFRESH_FAILS,
       'POST /api/auth/login': () => new Promise<Response>((resolve) => (finish = resolve)),
-      'GET /api/auth/me': ME_OK,
+      [TIMELINE]: EMPTY_TIMELINE,
     })
     const user = userEvent.setup()
     renderApp('/login')
@@ -174,7 +179,7 @@ describe('ログイン画面', () => {
     const pending = await screen.findByRole('button', { name: '送信中…' })
     expect(pending).toBeDisabled()
     finish(json(200, SESSION))
-    expect(await screen.findByRole('heading', { name: 'ログインしました' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'タイムライン' })).toBeInTheDocument()
   })
 
   it('通信に失敗したら、フォーム全体にエラーを出す', async () => {
@@ -198,7 +203,7 @@ describe('ログイン画面', () => {
     stubFetch({
       'POST /api/auth/refresh': REFRESH_FAILS,
       'POST /api/auth/login': () => json(200, SESSION),
-      'GET /api/auth/me': ME_OK,
+      [TIMELINE]: EMPTY_TIMELINE,
     })
     const user = userEvent.setup()
     renderApp('/')
@@ -207,7 +212,7 @@ describe('ログイン画面', () => {
     await user.type(screen.getByLabelText('パスワード'), 'password1')
     await user.click(screen.getByRole('button', { name: 'ログイン' }))
 
-    expect(await screen.findByRole('heading', { name: 'ログインしました' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'タイムライン' })).toBeInTheDocument()
   })
 })
 
@@ -216,7 +221,7 @@ describe('新規登録画面', () => {
     const server = stubFetch({
       'POST /api/auth/refresh': REFRESH_FAILS,
       'POST /api/auth/signup': () => json(201, SESSION),
-      'GET /api/auth/me': ME_OK,
+      [TIMELINE]: EMPTY_TIMELINE,
       ...overrides,
     })
     const user = userEvent.setup()
@@ -256,7 +261,7 @@ describe('新規登録画面', () => {
     })
     await user.click(screen.getByRole('button', { name: '登録する' }))
 
-    expect(await screen.findByRole('heading', { name: 'ログインしました' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'タイムライン' })).toBeInTheDocument()
     expect(screen.getByText('登録しました')).toBeInTheDocument()
     expect(server.calls.find((c) => c.path === '/api/auth/signup')?.body).toEqual({
       email: 'tamura@example.com',
@@ -313,7 +318,7 @@ describe('ログアウト', () => {
   it('サーバーへ通知してトークンを捨て、トーストを出してログイン画面へ移動する', async () => {
     const server = stubFetch({
       'POST /api/auth/refresh': REFRESH_OK,
-      'GET /api/auth/me': ME_OK,
+      [TIMELINE]: EMPTY_TIMELINE,
       'POST /api/auth/logout': () => noContent(),
     })
     const user = userEvent.setup()
@@ -332,7 +337,7 @@ describe('ログアウト', () => {
   it('通信に失敗しても、この端末ではログアウトする', async () => {
     stubFetch({
       'POST /api/auth/refresh': REFRESH_OK,
-      'GET /api/auth/me': ME_OK,
+      [TIMELINE]: EMPTY_TIMELINE,
       'POST /api/auth/logout': () => {
         throw new TypeError('Failed to fetch')
       },
