@@ -106,7 +106,12 @@
         const list = listBox.querySelector('.list');
         const empty = list.querySelector('.empty');
         if (empty) empty.remove();
-        list.prepend(...items.map(p => { known.add(p.id); return PostCard(p.id); }));
+        // 並び順は id 順(新しい順)。自分が先に投稿していれば、新着はその自分の投稿の下に入る
+        items.forEach(p => {
+          known.add(p.id);
+          const before = Array.from(list.children).find(c => Number(c.dataset.id) < p.id);
+          list.insertBefore(PostCard(p.id), before || null);
+        });
         baseId = Math.max(baseId, ...items.map(p => p.id));
         pending = null;
         paintBar();

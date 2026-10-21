@@ -122,7 +122,7 @@
   /* ---- 投稿カード(タイムライン・詳細・プロフィールで共通) ---- */
   function PostCard(postId, opts) {
     opts = opts || {};
-    const root = h('article', { class: 'card' + (opts.detail ? ' detail' : '') });
+    const root = h('article', { class: 'card' + (opts.detail ? ' detail' : ''), 'data-id': postId });
     let editing = false;
 
     function remove() {
