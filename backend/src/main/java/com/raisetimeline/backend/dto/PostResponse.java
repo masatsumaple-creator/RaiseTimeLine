@@ -10,20 +10,24 @@ public record PostResponse(
         OffsetDateTime createdAt,
         /** 編集されていなければ null。 */
         OffsetDateTime editedAt,
-        Author author
+        Author author,
+        long likeCount,
+        boolean likedByMe
 ) {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Author(Long id, String handle, String displayName, String avatarKey) {
     }
 
-    public static PostResponse from(Post post) {
+    public static PostResponse from(Post post, long likeCount, boolean likedByMe) {
         return new PostResponse(
                 post.getId(),
                 post.getBody(),
                 post.getCreatedAt(),
                 post.getUpdatedAt(),
                 new Author(post.getUserId(), post.getAuthorHandle(), post.getAuthorDisplayName(),
-                        post.getAuthorAvatarKey()));
+                        post.getAuthorAvatarKey()),
+                likeCount,
+                likedByMe);
     }
 }

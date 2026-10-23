@@ -1,6 +1,7 @@
 package com.raisetimeline.backend.service;
 
 import com.raisetimeline.backend.dto.CreatePostRequest;
+import com.raisetimeline.backend.dto.LikeResponse;
 import com.raisetimeline.backend.dto.NewPostsResponse;
 import com.raisetimeline.backend.dto.PostResponse;
 import com.raisetimeline.backend.dto.TimelineResponse;
@@ -8,12 +9,18 @@ import com.raisetimeline.backend.dto.UpdatePostRequest;
 import com.raisetimeline.backend.entity.Post;
 import com.raisetimeline.backend.exception.ApiException;
 import com.raisetimeline.backend.exception.GlobalExceptionHandler;
+import com.raisetimeline.backend.mapper.LikeMapper;
 import com.raisetimeline.backend.mapper.PostMapper;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,9 +42,11 @@ public class PostService {
     private static final String INVALID_TAB_MESSAGE = "tab は following または all を指定してください";
 
     private final PostMapper postMapper;
+    private final LikeMapper likeMapper;
 
-    public PostService(PostMapper postMapper) {
+    public PostService(PostMapper postMapper, LikeMapper likeMapper) {
         this.postMapper = postMapper;
+        this.likeMapper = likeMapper;
     }
 
     @Transactional
@@ -46,12 +55,12 @@ public class PostService {
         post.setUserId(userId);
         post.setBody(request.body());
         postMapper.insert(post);
-        return PostResponse.from(postMapper.findById(post.getId()));
+        return toResponse(userId, postMapper.findById(post.getId()));
     }
 
     @Transactional(readOnly = true)
-    public PostResponse get(Long id) {
-        return PostResponse.from(findOrThrow(id));
+    public PostResponse get(Long userId, Long id) {
+        return toResponse(userId, findOrThrow(id));
     }
 
     @Transactional(readOnly = true)
@@ -69,7 +78,7 @@ public class PostService {
         boolean hasNext = rows.size() > size;
         List<Post> page = hasNext ? rows.subList(0, size) : rows;
         String nextCursor = hasNext ? Cursor.encode(page.get(page.size() - 1)) : null;
-        return new TimelineResponse(page.stream().map(PostResponse::from).toList(), nextCursor);
+        return new TimelineResponse(toResponses(userId, page), nextCursor);
     }
 
     @Transactional(readOnly = true)
@@ -77,7 +86,7 @@ public class PostService {
         List<Post> rows = postMapper.findNewerThan(authorFilter(userId, tab), sinceId, MAX_NEW_POSTS + 1);
         boolean hasMore = rows.size() > MAX_NEW_POSTS;
         List<Post> items = hasMore ? rows.subList(0, MAX_NEW_POSTS) : rows;
-        return new NewPostsResponse(items.size(), hasMore, items.stream().map(PostResponse::from).toList());
+        return new NewPostsResponse(items.size(), hasMore, toResponses(userId, items));
     }
 
     @Transactional
@@ -85,17 +94,57 @@ public class PostService {
         Post post = findOwnedOrThrow(userId, id);
         if (post.getBody().equals(request.body())) {
             // 変更なしなら更新日時を触らず、「編集済み」にもしない
-            return PostResponse.from(post);
+            return toResponse(userId, post);
         }
         // 確認と更新の間に消された場合は 0 件になる。WHERE に user_id を含め、他人の投稿を書き換えないようにする
         requireAffected(postMapper.updateBody(id, userId, request.body()));
-        return PostResponse.from(postMapper.findById(id));
+        return toResponse(userId, postMapper.findById(id));
     }
 
     @Transactional
     public void delete(Long userId, Long id) {
         findOwnedOrThrow(userId, id);
         requireAffected(postMapper.delete(id, userId));
+    }
+
+    @Transactional
+    public LikeResponse like(Long userId, Long postId) {
+        findOrThrow(postId);
+        try {
+            likeMapper.insertIgnore(userId, postId);
+        } catch (DataIntegrityViolationException e) {
+            // 確認といいねの間に投稿が消された(外部キー違反)
+            throw new ApiException(HttpStatus.NOT_FOUND, NOT_FOUND, NOT_FOUND_MESSAGE);
+        }
+        return new LikeResponse(likeMapper.countByPostId(postId), true);
+    }
+
+    @Transactional
+    public LikeResponse unlike(Long userId, Long postId) {
+        findOrThrow(postId);
+        likeMapper.delete(userId, postId);
+        return new LikeResponse(likeMapper.countByPostId(postId), false);
+    }
+
+    private PostResponse toResponse(Long userId, Post post) {
+        return toResponses(userId, List.of(post)).get(0);
+    }
+
+    /**
+     * 投稿一覧をレスポンスに変換する。いいね数・いいね済みは投稿ごとに問い合わせず、
+     * 投稿 ID の一括(IN)で件数に依らず固定のクエリ数で取得する(N+1 を避ける)。
+     */
+    private List<PostResponse> toResponses(Long userId, List<Post> posts) {
+        if (posts.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = posts.stream().map(Post::getId).toList();
+        Map<Long, Long> likeCounts = likeMapper.countByPostIds(ids).stream()
+                .collect(Collectors.toMap(LikeMapper.PostCount::postId, LikeMapper.PostCount::count));
+        Set<Long> liked = new HashSet<>(likeMapper.findLikedPostIds(userId, ids));
+        return posts.stream()
+                .map(p -> PostResponse.from(p, likeCounts.getOrDefault(p.getId(), 0L), liked.contains(p.getId())))
+                .toList();
     }
 
     private static void requireAffected(int rows) {

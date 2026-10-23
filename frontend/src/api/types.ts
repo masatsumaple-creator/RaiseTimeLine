@@ -36,6 +36,13 @@ export interface Post {
   /** 編集されていなければ null */
   editedAt: string | null
   author: PostAuthor
+  likeCount: number
+  likedByMe: boolean
+}
+
+export interface LikeResult {
+  likeCount: number
+  likedByMe: boolean
 }
 
 export type TimelineTab = 'following' | 'all'

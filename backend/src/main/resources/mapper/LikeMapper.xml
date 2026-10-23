@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.raisetimeline.backend.mapper.LikeMapper">
+
+    <insert id="insertIgnore">
+        INSERT INTO likes (user_id, post_id)
+        VALUES (#{userId}, #{postId})
+        ON CONFLICT (user_id, post_id) DO NOTHING
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM likes WHERE user_id = #{userId} AND post_id = #{postId}
+    </delete>
+
+    <select id="countByPostId" resultType="long">
+        SELECT COUNT(*) FROM likes WHERE post_id = #{postId}
+    </select>
+
+    <select id="countByPostIds" resultType="com.raisetimeline.backend.mapper.LikeMapper$PostCount">
+        SELECT post_id AS postId, COUNT(*) AS count
+        FROM likes
+        WHERE post_id IN
+        <foreach collection="postIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY post_id
+    </select>
+
+    <select id="findLikedPostIds" resultType="long">
+        SELECT post_id
+        FROM likes
+        WHERE user_id = #{userId} AND post_id IN
+        <foreach collection="postIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+</mapper>
