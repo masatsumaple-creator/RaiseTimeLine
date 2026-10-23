@@ -40,7 +40,9 @@ class FakeIntersectionObserver {
   }
 }
 
-function reachEnd() {
+/** 末尾を監視する側(useInfiniteScroll の effect)が登録されるのを待ってから、「末尾が見えた」を起こす。 */
+async function reachEnd() {
+  await waitFor(() => expect(observers.some((o) => !o.disconnected)).toBe(true))
   act(() => {
     for (const o of observers.filter((o) => !o.disconnected)) {
       o.callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
@@ -153,7 +155,7 @@ describe('プロフィールの表示', () => {
 
     renderAt('/users/suzuki')
     await screen.findByText('新しい投稿')
-    reachEnd()
+    await reachEnd()
 
     expect(await screen.findByText('古い投稿')).toBeInTheDocument()
     expect(screen.getAllByText('新しい投稿')).toHaveLength(1)
@@ -204,5 +206,124 @@ describe('プロフィールへの導線', () => {
     await userEvent.click(link)
 
     await waitFor(() => expect(screen.getByRole('heading', { name: '田村' })).toBeInTheDocument())
+  })
+})
+
+describe('フォロー', () => {
+  const FOLLOW = 'PUT /api/users/suzuki/follow'
+  const UNFOLLOW = 'DELETE /api/users/suzuki/follow'
+
+  function stubProfile(overrides: Partial<UserProfile>, extra: Record<string, Handler> = {}) {
+    return stubFetch({
+      'POST /api/auth/refresh': REFRESH_OK,
+      [PROFILE]: () => json(200, profile(overrides)),
+      [POSTS]: () => page([]),
+      ...extra,
+    })
+  }
+
+  it('フォロー数・フォロワー数を表示する', async () => {
+    stubProfile({ followingCount: 3, followerCount: 12 })
+
+    renderAt('/users/suzuki')
+
+    expect(await screen.findByText('フォロー中', { selector: '.profile-counts span' })).toHaveTextContent('3 フォロー中')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('12 フォロワー')
+  })
+
+  it('「フォロー」を押すと、先に「フォロー中」に変わり、サーバーの値でフォロワー数を上書きする', async () => {
+    let release: (r: Response) => void = () => {}
+    const { count } = stubProfile(
+      { followerCount: 5 },
+      { [FOLLOW]: () => new Promise<Response>((resolve) => (release = resolve)) },
+    )
+
+    renderAt('/users/suzuki')
+    await userEvent.click(await screen.findByRole('button', { name: 'フォロー' }))
+
+    // サーバーの応答前に、画面が先に変わる
+    expect(screen.getByRole('button', { name: 'フォロー中' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('6 フォロワー')
+
+    // 別の人も同時にフォローしていた場合は、サーバーの値が正
+    await act(async () => release(json(200, { followedByMe: true, followerCount: 8 })))
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('8 フォロワー')
+    expect(count(FOLLOW)).toBe(1)
+  })
+
+  it('「フォロー中」を押すと解除し、フォロワー数が 1 減る', async () => {
+    stubProfile(
+      { followedByMe: true, followerCount: 5 },
+      { [UNFOLLOW]: () => json(200, { followedByMe: false, followerCount: 4 }) },
+    )
+
+    renderAt('/users/suzuki')
+    await userEvent.click(await screen.findByRole('button', { name: 'フォロー中' }))
+
+    expect(await screen.findByRole('button', { name: 'フォロー' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('4 フォロワー')
+  })
+
+  it('失敗したら元の状態に戻し、メッセージを出す', async () => {
+    stubProfile({ followerCount: 5 }, { [FOLLOW]: () => apiError(500, 'INTERNAL', 'error') })
+
+    renderAt('/users/suzuki')
+    await userEvent.click(await screen.findByRole('button', { name: 'フォロー' }))
+
+    expect(await screen.findByText('フォローの操作に失敗しました')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'フォロー' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('5 フォロワー')
+  })
+
+  it('連打したときは、最後に押した操作の結果を正とする', async () => {
+    const resolvers: ((r: Response) => void)[] = []
+    stubProfile(
+      { followerCount: 5 },
+      {
+        [FOLLOW]: () => new Promise<Response>((resolve) => resolvers.push(resolve)),
+        [UNFOLLOW]: () => new Promise<Response>((resolve) => resolvers.push(resolve)),
+      },
+    )
+
+    renderAt('/users/suzuki')
+    await userEvent.click(await screen.findByRole('button', { name: 'フォロー' }))
+    await userEvent.click(screen.getByRole('button', { name: 'フォロー中' }))
+
+    // 先に押した「フォロー」の結果が後から届いても、最後の「解除」の表示を上書きしない
+    await act(async () => {
+      resolvers[0](json(200, { followedByMe: true, followerCount: 6 }))
+      resolvers[1](json(200, { followedByMe: false, followerCount: 5 }))
+    })
+    expect(screen.getByRole('button', { name: 'フォロー' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('5 フォロワー')
+  })
+
+  it('自分のプロフィールには、フォローボタンを出さない', async () => {
+    stubFetch({
+      'POST /api/auth/refresh': REFRESH_OK,
+      'GET /api/users/tamura': () => json(200, profile({ ...ME, isMe: true })),
+      'GET /api/users/tamura/posts': () => page([]),
+    })
+
+    renderAt('/users/tamura')
+
+    expect(await screen.findByRole('heading', { name: '田村' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^フォロー/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('「フォロー中」タブが空のとき', () => {
+  it('案内を出し、「全体」へ切り替えられる', async () => {
+    stubFetch({
+      'POST /api/auth/refresh': REFRESH_OK,
+      'GET /api/timeline?tab=following': () => page([]),
+      'GET /api/timeline?tab=all': () => page([post(1, '他人の投稿')]),
+    })
+
+    renderAt('/')
+    await userEvent.click(await screen.findByRole('button', { name: '「全体」で探す' }))
+
+    expect(await screen.findByText('他人の投稿')).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '全体' })).toHaveAttribute('aria-selected', 'true')
   })
 })

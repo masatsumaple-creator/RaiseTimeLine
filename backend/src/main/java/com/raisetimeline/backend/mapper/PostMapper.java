@@ -19,9 +19,13 @@ public interface PostMapper {
     /** 削除した行数を返す。userId の投稿でなければ(または無ければ)0。 */
     int delete(@Param("id") Long id, @Param("userId") Long userId);
 
-    /** authorId が null なら全ユーザー。cursor が null なら先頭から。 */
+    /**
+     * authorId: そのユーザーの投稿だけ。followerId: そのユーザー自身と、フォロー中のユーザーの投稿。
+     * どちらも null なら全ユーザー。cursor が null なら先頭から。
+     */
     List<Post> findPage(
             @Param("authorId") Long authorId,
+            @Param("followerId") Long followerId,
             @Param("cursorCreatedAt") OffsetDateTime cursorCreatedAt,
             @Param("cursorId") Long cursorId,
             @Param("limit") int limit);
@@ -29,6 +33,7 @@ public interface PostMapper {
     /** sinceId より新しい(id が大きい)投稿を新しい順に返す。 */
     List<Post> findNewerThan(
             @Param("authorId") Long authorId,
+            @Param("followerId") Long followerId,
             @Param("sinceId") Long sinceId,
             @Param("limit") int limit);
 }

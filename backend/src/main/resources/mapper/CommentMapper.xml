@@ -20,7 +20,8 @@
     </select>
 
     <delete id="delete">
-        DELETE FROM comments WHERE id = #{id} AND user_id = #{userId}
+        DELETE FROM comments
+        WHERE id = #{id} AND user_id = #{userId}
     </delete>
 
     <select id="findPage" resultType="com.raisetimeline.backend.entity.Comment">
@@ -37,7 +38,9 @@
     </select>
 
     <select id="countByPostId" resultType="long">
-        SELECT COUNT(*) FROM comments WHERE post_id = #{postId}
+        SELECT COUNT(*)
+        FROM comments
+        WHERE post_id = #{postId}
     </select>
 
     <select id="countByPostIds" resultType="com.raisetimeline.backend.mapper.PostCount">

@@ -13,15 +13,25 @@
     </insert>
 
     <select id="existsByEmail" resultType="boolean">
-        SELECT EXISTS (SELECT 1 FROM users WHERE lower(email) = lower(#{email}))
+        SELECT EXISTS (
+            SELECT 1
+            FROM users
+            WHERE lower(email) = lower(#{email})
+        )
     </select>
 
     <select id="existsByHandle" resultType="boolean">
-        SELECT EXISTS (SELECT 1 FROM users WHERE lower(handle) = lower(#{handle}))
+        SELECT EXISTS (
+            SELECT 1
+            FROM users
+            WHERE lower(handle) = lower(#{handle})
+        )
     </select>
 
     <select id="findByEmail" resultType="com.raisetimeline.backend.entity.User">
-        SELECT <include refid="userColumns"/> FROM users WHERE lower(email) = lower(#{email})
+        SELECT <include refid="userColumns"/>
+        FROM users
+        WHERE lower(email) = lower(#{email})
     </select>
 
     <select id="findByHandle" resultType="com.raisetimeline.backend.entity.User">
@@ -31,6 +41,8 @@
     </select>
 
     <select id="findById" resultType="com.raisetimeline.backend.entity.User">
-        SELECT <include refid="userColumns"/> FROM users WHERE id = #{id}
+        SELECT <include refid="userColumns"/>
+        FROM users
+        WHERE id = #{id}
     </select>
 </mapper>

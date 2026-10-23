@@ -312,7 +312,7 @@ class CommentApiIntegrationTest {
                 .andExpect(jsonPath("$.items.length()").value(20))
                 .andExpect(jsonPath("$.items[0].commentCount").value(2));
 
-        verify(postMapper, times(1)).findPage(any(), any(), any(), anyInt());
+        verify(postMapper, times(1)).findPage(any(), any(), any(), any(), anyInt());
         verify(commentMapper, times(1)).countByPostIds(any());
         verify(commentMapper, times(0)).countByPostId(any());
         verify(likeMapper, times(1)).countByPostIds(any());

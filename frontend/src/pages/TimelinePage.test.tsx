@@ -38,7 +38,9 @@ class FakeIntersectionObserver {
   }
 }
 
-function reachEnd() {
+/** 末尾を監視する側(useInfiniteScroll の effect)が登録されるのを待ってから、「末尾が見えた」を起こす。 */
+async function reachEnd() {
+  await waitFor(() => expect(observers.some((o) => !o.disconnected)).toBe(true))
   act(() => {
     for (const o of observers.filter((o) => !o.disconnected)) {
       o.callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
@@ -366,7 +368,7 @@ describe('無限スクロール', () => {
     await screen.findByText('2番目')
     expect(server.count(`${FOLLOWING}&cursor=cursor-1`)).toBe(0)
 
-    reachEnd()
+    await reachEnd()
 
     expect(await screen.findByText('1番目')).toBeInTheDocument()
     expect(screen.getAllByRole('article').map((a) => a.textContent)).toEqual([
@@ -393,7 +395,7 @@ describe('無限スクロール', () => {
 
     renderTimeline()
     await screen.findByText('2番目')
-    reachEnd()
+    await reachEnd()
     await user.click(await screen.findByRole('button', { name: '読み込みに失敗しました。再試行' }))
 
     expect(await screen.findByText('1番目')).toBeInTheDocument()

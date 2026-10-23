@@ -50,7 +50,9 @@ class FakeIntersectionObserver {
   }
 }
 
-function reachEnd() {
+/** 末尾を監視する側(useInfiniteScroll の effect)が登録されるのを待ってから、「末尾が見えた」を起こす。 */
+async function reachEnd() {
+  await waitFor(() => expect(observers.some((o) => !o.disconnected)).toBe(true))
   act(() => {
     for (const o of observers.filter((o) => !o.disconnected)) {
       o.callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
@@ -151,7 +153,7 @@ describe('詳細画面の表示', () => {
 
     renderAt('/posts/1')
     await screen.findByText('コメントB')
-    reachEnd()
+    await reachEnd()
 
     expect(await screen.findByText('コメントC')).toBeInTheDocument()
     expect(screen.getAllByText('コメントB')).toHaveLength(1)
@@ -204,7 +206,7 @@ describe('コメントの投稿', () => {
     expect(screen.getByLabelText('コメント 3 件')).toBeInTheDocument()
     expect(screen.queryByText('自分の新しいコメント')).not.toBeInTheDocument()
 
-    reachEnd()
+    await reachEnd()
     expect(await screen.findByText('自分の新しいコメント')).toBeInTheDocument()
     expect(screen.getAllByText('自分の新しいコメント')).toHaveLength(1)
   })

@@ -53,7 +53,7 @@ describe('起動時の状態復元とガード', () => {
     renderApp('/')
 
     expect(await screen.findByRole('heading', { name: 'タイムライン' })).toBeInTheDocument()
-    expect(await screen.findByText('まだ投稿がありません。最初の投稿をしてみましょう。')).toBeInTheDocument()
+    expect(await screen.findByText('まだ投稿がありません。投稿するか、気になるユーザーをフォローしましょう。')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'ログアウト' })).toBeInTheDocument()
     expect(server.calls.find((c) => c.path === TIMELINE.slice(4))?.headers.Authorization).toBe('Bearer access-1')
   })
