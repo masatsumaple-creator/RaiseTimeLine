@@ -17,7 +17,7 @@ const TABS: { id: TimelineTab; label: string }[] = [
 ]
 
 const EMPTY_MESSAGES: Record<TimelineTab, string> = {
-  following: 'まだ投稿がありません。最初の投稿をしてみましょう。',
+  following: 'まだ投稿がありません。投稿するか、気になるユーザーをフォローしましょう。',
   all: 'まだ投稿がありません。',
 }
 
@@ -99,7 +99,14 @@ export function TimelinePage() {
         )}
 
         {timeline.status === 'ready' && timeline.items.length === 0 && (
-          <p className="panel muted center">{EMPTY_MESSAGES[tab]}</p>
+          <div className="panel muted center">
+            <p>{EMPTY_MESSAGES[tab]}</p>
+            {tab === 'following' && (
+              <button type="button" className="btn small" onClick={() => setTab('all')}>
+                「全体」で探す
+              </button>
+            )}
+          </div>
         )}
 
         {timeline.items.map((post) => (

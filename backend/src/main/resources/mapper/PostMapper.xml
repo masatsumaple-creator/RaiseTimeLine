@@ -33,7 +33,11 @@
         SELECT <include refid="postColumns"/>
         FROM posts p JOIN users u ON u.id = p.user_id
         <where>
-            <if test="authorId != null">p.user_id = #{authorId}</if>
+            <if test="authorId != null">AND p.user_id = #{authorId}</if>
+            <if test="followerId != null">
+                AND (p.user_id = #{followerId}
+                    OR p.user_id IN (SELECT f.followee_id FROM follows f WHERE f.follower_id = #{followerId}))
+            </if>
             <if test="cursorId != null">
                 AND (p.created_at, p.id) &lt; (#{cursorCreatedAt}, #{cursorId})
             </if>
@@ -48,6 +52,10 @@
         <where>
             p.id &gt; #{sinceId}
             <if test="authorId != null">AND p.user_id = #{authorId}</if>
+            <if test="followerId != null">
+                AND (p.user_id = #{followerId}
+                    OR p.user_id IN (SELECT f.followee_id FROM follows f WHERE f.follower_id = #{followerId}))
+            </if>
         </where>
         ORDER BY p.id DESC
         LIMIT #{limit}

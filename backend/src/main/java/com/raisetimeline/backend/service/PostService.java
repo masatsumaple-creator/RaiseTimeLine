@@ -69,7 +69,7 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public TimelineResponse timeline(Long userId, String tab, String cursor, Integer limit) {
-        return page(userId, authorFilter(userId, tab), cursor, limit);
+        return page(userId, null, followerFilter(userId, tab), cursor, limit);
     }
 
     /** 指定したハンドルのユーザーの投稿を、新しい順に返す(プロフィール S-05)。 */
@@ -79,16 +79,18 @@ public class PostService {
         if (author == null) {
             throw new ApiException(HttpStatus.NOT_FOUND, NOT_FOUND, "ユーザーが見つかりません");
         }
-        return page(viewerId, author.getId(), cursor, limit);
+        return page(viewerId, author.getId(), null, cursor, limit);
     }
 
-    private TimelineResponse page(Long userId, Long authorId, String cursor, Integer limit) {
+    /** authorId: そのユーザーの投稿だけ。followerId: そのユーザー自身と、フォロー中のユーザーの投稿。どちらも null なら全ユーザー。 */
+    private TimelineResponse page(Long userId, Long authorId, Long followerId, String cursor, Integer limit) {
         int size = limit == null ? DEFAULT_LIMIT : Math.min(Math.max(limit, 1), MAX_LIMIT);
         Cursor decoded = Cursor.decodeOrNull(cursor);
 
         // 1 件多く取得して、次ページがあるかを判定する
         List<Post> rows = postMapper.findPage(
                 authorId,
+                followerId,
                 decoded == null ? null : decoded.createdAt(),
                 decoded == null ? null : decoded.id(),
                 size + 1);
@@ -101,7 +103,7 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public NewPostsResponse newerThan(Long userId, String tab, Long sinceId) {
-        List<Post> rows = postMapper.findNewerThan(authorFilter(userId, tab), sinceId, MAX_NEW_POSTS + 1);
+        List<Post> rows = postMapper.findNewerThan(null, followerFilter(userId, tab), sinceId, MAX_NEW_POSTS + 1);
         boolean hasMore = rows.size() > MAX_NEW_POSTS;
         List<Post> items = hasMore ? rows.subList(0, MAX_NEW_POSTS) : rows;
         return new NewPostsResponse(items.size(), hasMore, toResponses(userId, items));
@@ -195,11 +197,8 @@ public class PostService {
         return post;
     }
 
-    /**
-     * 全体タブは絞り込みなし。フォロー中タブは、フォロー機能が未実装のため暫定で自分の投稿のみ。
-     * フォロー機能の実装時は、ここを「自分 + フォロー中のユーザー」に置き換える。
-     */
-    private static Long authorFilter(Long userId, String tab) {
+    /** 全体タブは絞り込みなし(null)。フォロー中タブは、自分とフォロー中のユーザーの投稿(userId)。 */
+    private static Long followerFilter(Long userId, String tab) {
         if (tab == null || TAB_FOLLOWING.equals(tab)) {
             return userId;
         }

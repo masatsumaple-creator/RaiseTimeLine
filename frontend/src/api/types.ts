@@ -103,3 +103,8 @@ export interface UserProfile {
   /** ログイン中のユーザー自身のプロフィールか */
   isMe: boolean
 }
+
+export interface FollowResult {
+  followedByMe: boolean
+  followerCount: number
+}

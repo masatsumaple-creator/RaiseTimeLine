@@ -193,7 +193,7 @@ class LikeApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(20));
 
-        verify(postMapper, times(1)).findPage(any(), any(), any(), org.mockito.ArgumentMatchers.anyInt());
+        verify(postMapper, times(1)).findPage(any(), any(), any(), any(), org.mockito.ArgumentMatchers.anyInt());
         verify(likeMapper, times(1)).countByPostIds(any());
         verify(likeMapper, times(1)).findLikedPostIds(any(), any());
         verify(likeMapper, times(0)).countByPostId(any());
