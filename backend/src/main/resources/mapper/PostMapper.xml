@@ -20,7 +20,9 @@
     </select>
 
     <update id="updateBody">
-        UPDATE posts SET body = #{body}, updated_at = now() WHERE id = #{id} AND user_id = #{userId}
+        UPDATE posts
+        SET body = #{body}, updated_at = now()
+        WHERE id = #{id} AND user_id = #{userId}
     </update>
 
     <delete id="delete">
