@@ -152,7 +152,7 @@ export function PostCard({ post, mine, onUpdated, onDeleted }: PostCardProps) {
               type="button"
               className={`act like${post.likedByMe ? ' on' : ''}`}
               aria-pressed={post.likedByMe}
-              aria-label="いいね"
+              aria-label={`いいね ${post.likeCount} 件`}
               onClick={toggleLike}
             >
               {post.likedByMe ? '♥' : '♡'} {post.likeCount}

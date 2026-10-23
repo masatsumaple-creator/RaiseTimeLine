@@ -303,13 +303,16 @@ describe('いいね', () => {
     const user = userEvent.setup()
 
     renderTimeline()
-    const button = await screen.findByRole('button', { name: 'いいね' })
+    const button = await screen.findByRole('button', { name: /^いいね/ })
     expect(button).toHaveAttribute('aria-pressed', 'false')
     expect(button).toHaveTextContent('3')
+    // スクリーンリーダーにも件数が伝わる
+    expect(button).toHaveAccessibleName('いいね 3 件')
 
     await user.click(button)
     // 他のユーザーの分も含めた、サーバーの件数で上書きされる
     await waitFor(() => expect(button).toHaveTextContent('5'))
+    expect(button).toHaveAccessibleName('いいね 5 件')
     expect(button).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(button)
@@ -328,7 +331,7 @@ describe('いいね', () => {
     const user = userEvent.setup()
 
     renderTimeline()
-    const button = await screen.findByRole('button', { name: 'いいね' })
+    const button = await screen.findByRole('button', { name: /^いいね/ })
     await user.click(button)
 
     expect(await screen.findByText('いいねに失敗しました')).toBeInTheDocument()
@@ -345,7 +348,7 @@ describe('いいね', () => {
     const user = userEvent.setup()
 
     renderTimeline()
-    await user.click(await screen.findByRole('button', { name: 'いいね' }))
+    await user.click(await screen.findByRole('button', { name: /^いいね/ }))
 
     await waitFor(() => expect(screen.queryByText('消えた投稿')).not.toBeInTheDocument())
   })
