@@ -2,6 +2,7 @@ package com.raisetimeline.backend.controller;
 
 import com.raisetimeline.backend.dto.FollowResponse;
 import com.raisetimeline.backend.dto.TimelineResponse;
+import com.raisetimeline.backend.dto.UserListResponse;
 import com.raisetimeline.backend.dto.UserProfileResponse;
 import com.raisetimeline.backend.service.PostService;
 import com.raisetimeline.backend.service.UserService;
@@ -39,6 +40,24 @@ public class UserController {
             @RequestParam(required = false) String cursor,
             @RequestParam(required = false) Integer limit) {
         return postService.userPosts(userId(jwt), handle, cursor, limit);
+    }
+
+    @GetMapping("/{handle}/following")
+    public UserListResponse following(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String handle,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+        return userService.following(userId(jwt), handle, cursor, limit);
+    }
+
+    @GetMapping("/{handle}/followers")
+    public UserListResponse followers(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String handle,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit) {
+        return userService.followers(userId(jwt), handle, cursor, limit);
     }
 
     @PutMapping("/{handle}/follow")

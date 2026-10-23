@@ -108,3 +108,21 @@ export interface FollowResult {
   followedByMe: boolean
   followerCount: number
 }
+
+/** フォロー中 / フォロワー一覧の 1 行 */
+export interface UserSummary {
+  id: number
+  handle: string
+  displayName: string
+  bio?: string
+  avatarKey?: string
+  followedByMe: boolean
+  /** ログイン中のユーザー自身の行か(フォローボタンを出さない) */
+  isMe: boolean
+}
+
+export interface UserPage {
+  items: UserSummary[]
+  /** null なら最後のページ */
+  nextCursor: string | null
+}

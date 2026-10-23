@@ -170,11 +170,26 @@ a.act { text-decoration: none; }
   .logo { font-size: 15px; }
 }
 
+/* follow list */
+.follow-list-title { font-size: 18px; margin: 0 0 8px; }
+.follow-list-title a { color: inherit; text-decoration: none; }
+.follow-list-title a:hover { text-decoration: underline; }
+.tabs a.tab { text-align: center; text-decoration: none; }
+.user-list { list-style: none; margin: 0; padding: 0; }
+.user-row { display: flex; align-items: center; gap: 12px; }
+.user-row-avatar { display: inline-flex; text-decoration: none; }
+.user-row-main { min-width: 0; flex: 1; }
+.user-row-handle { margin: 2px 0 0; font-size: 14px; }
+.user-row-bio { margin: 4px 0 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-row-follow { flex: none; }
+
 /* profile */
 .profile { display: flex; gap: 16px; align-items: flex-start; }
 .profile-main { min-width: 0; flex: 1; }
 .profile-follow { flex: none; }
 .profile-counts { display: flex; gap: 16px; margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+.profile-counts a { color: inherit; text-decoration: none; }
+.profile-counts a:hover { text-decoration: underline; }
 .profile-counts strong { color: var(--text); }
 .profile-name { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
 .profile-handle { margin: 2px 0 0; }

@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import { GuestOnly, RequireAuth } from './auth/RouteGuards'
 import { Layout } from './components/Layout'
+import { FollowListPage } from './pages/FollowListPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PostDetailPage } from './pages/PostDetailPage'
@@ -20,6 +21,8 @@ export function App() {
           <Route index element={<TimelinePage />} />
           <Route path="/posts/:id" element={<PostDetailPage />} />
           <Route path="/users/:handle" element={<ProfilePage />} />
+          <Route path="/users/:handle/following" element={<FollowListPage kind="following" />} />
+          <Route path="/users/:handle/followers" element={<FollowListPage kind="followers" />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>
