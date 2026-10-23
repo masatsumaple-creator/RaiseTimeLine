@@ -98,7 +98,7 @@ function Profile({ handle }: { handle: string }) {
           <h1 id="profile-name" className="profile-name">
             {profile.displayName}
           </h1>
-          <p className="muted">@{profile.handle}</p>
+          <p className="muted profile-handle">@{profile.handle}</p>
           {profile.bio && <p className="profile-bio">{profile.bio}</p>}
           <p className="profile-counts">
             <span>

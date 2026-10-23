@@ -177,4 +177,5 @@ a.act { text-decoration: none; }
 .profile-counts { display: flex; gap: 16px; margin: 8px 0 0; color: var(--muted); font-size: 14px; }
 .profile-counts strong { color: var(--text); }
 .profile-name { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
+.profile-handle { margin: 2px 0 0; }
 .profile-bio { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
