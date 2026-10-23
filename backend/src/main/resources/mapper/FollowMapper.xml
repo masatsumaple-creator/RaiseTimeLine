@@ -32,4 +32,40 @@
         FROM follows
         WHERE followee_id = #{userId}
     </select>
+    <sql id="entryColumns">
+        u.id, u.handle, u.display_name, u.bio, u.avatar_key, f.created_at AS followed_at
+    </sql>
+
+    <select id="findFollowing" resultType="com.raisetimeline.backend.entity.FollowEntry">
+        SELECT <include refid="entryColumns"/>
+        FROM follows f JOIN users u ON u.id = f.followee_id
+        <where>
+            f.follower_id = #{userId}
+            <if test="cursorId != null">
+                AND (f.created_at, f.followee_id) &lt; (#{cursorCreatedAt}, #{cursorId})
+            </if>
+        </where>
+        ORDER BY f.created_at DESC, f.followee_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findFollowers" resultType="com.raisetimeline.backend.entity.FollowEntry">
+        SELECT <include refid="entryColumns"/>
+        FROM follows f JOIN users u ON u.id = f.follower_id
+        <where>
+            f.followee_id = #{userId}
+            <if test="cursorId != null">
+                AND (f.created_at, f.follower_id) &lt; (#{cursorCreatedAt}, #{cursorId})
+            </if>
+        </where>
+        ORDER BY f.created_at DESC, f.follower_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findFollowedIds" resultType="long">
+        SELECT followee_id
+        FROM follows
+        WHERE follower_id = #{followerId} AND followee_id IN
+        <foreach collection="userIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
 </mapper>

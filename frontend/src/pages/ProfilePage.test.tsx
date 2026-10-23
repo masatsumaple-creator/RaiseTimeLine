@@ -227,8 +227,8 @@ describe('フォロー', () => {
 
     renderAt('/users/suzuki')
 
-    expect(await screen.findByText('フォロー中', { selector: '.profile-counts span' })).toHaveTextContent('3 フォロー中')
-    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('12 フォロワー')
+    expect(await screen.findByText('フォロー中', { selector: '.profile-counts a' })).toHaveTextContent('3 フォロー中')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts a' })).toHaveTextContent('12 フォロワー')
   })
 
   it('「フォロー」を押すと、先に「フォロー中」に変わり、サーバーの値でフォロワー数を上書きする', async () => {
@@ -243,11 +243,11 @@ describe('フォロー', () => {
 
     // サーバーの応答前に、画面が先に変わる
     expect(screen.getByRole('button', { name: 'フォロー中' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('6 フォロワー')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts a' })).toHaveTextContent('6 フォロワー')
 
     // 別の人も同時にフォローしていた場合は、サーバーの値が正
     await act(async () => release(json(200, { followedByMe: true, followerCount: 8 })))
-    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('8 フォロワー')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts a' })).toHaveTextContent('8 フォロワー')
     expect(count(FOLLOW)).toBe(1)
   })
 
@@ -261,7 +261,7 @@ describe('フォロー', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'フォロー中' }))
 
     expect(await screen.findByRole('button', { name: 'フォロー' })).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('4 フォロワー')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts a' })).toHaveTextContent('4 フォロワー')
   })
 
   it('失敗したら元の状態に戻し、メッセージを出す', async () => {
@@ -272,7 +272,7 @@ describe('フォロー', () => {
 
     expect(await screen.findByText('フォローの操作に失敗しました')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'フォロー' })).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('5 フォロワー')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts a' })).toHaveTextContent('5 フォロワー')
   })
 
   it('連打したときは、最後に押した操作の結果を正とする', async () => {
@@ -295,7 +295,7 @@ describe('フォロー', () => {
       resolvers[1](json(200, { followedByMe: false, followerCount: 5 }))
     })
     expect(screen.getByRole('button', { name: 'フォロー' })).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByText('フォロワー', { selector: '.profile-counts span' })).toHaveTextContent('5 フォロワー')
+    expect(screen.getByText('フォロワー', { selector: '.profile-counts a' })).toHaveTextContent('5 フォロワー')
   })
 
   it('自分のプロフィールには、フォローボタンを出さない', async () => {

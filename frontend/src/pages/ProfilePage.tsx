@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client'
-import { fetchProfile, fetchUserPosts, followUser, unfollowUser } from '../api/users'
+import { fetchProfile, fetchUserPosts } from '../api/users'
 import type { UserProfile } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Avatar } from '../components/Avatar'
 import { PostCard } from '../components/PostCard'
-import { useToast } from '../components/toast'
+import { useFollowToggle } from '../hooks/useFollowToggle'
 import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { useTimeline } from '../hooks/useTimeline'
 import { NETWORK_ERROR_MESSAGE } from './formErrors'
@@ -21,31 +21,15 @@ export function ProfilePage() {
 
 function Profile({ handle }: { handle: string }) {
   const { user } = useAuth()
-  const toast = useToast()
   const [state, setState] = useState<ProfileState>({ status: 'loading' })
   const posts = useTimeline(`user:${handle}`, (cursor) => fetchUserPosts(handle, cursor))
   const sentinel = useInfiniteScroll(posts.hasNext && posts.more === 'idle', posts.loadMore)
-  // フォローは連打されうるので、最後に押した操作の結果だけを反映する
-  const followSeq = useRef(0)
 
   function patchProfile(patch: Partial<UserProfile>) {
     setState((s) => (s.status === 'ready' ? { status: 'ready', profile: { ...s.profile, ...patch } } : s))
   }
 
-  async function toggleFollow(current: UserProfile) {
-    const follow = !current.followedByMe
-    const seq = ++followSeq.current
-    // 先に画面を更新し、サーバーの結果で数を上書きする
-    patchProfile({ followedByMe: follow, followerCount: Math.max(0, current.followerCount + (follow ? 1 : -1)) })
-    try {
-      const result = await (follow ? followUser : unfollowUser)(handle)
-      if (seq === followSeq.current) patchProfile(result)
-    } catch (e) {
-      if (seq !== followSeq.current) return
-      patchProfile({ followedByMe: current.followedByMe, followerCount: current.followerCount })
-      toast(e instanceof ApiError && e.status === 404 ? 'ユーザーが見つかりません' : 'フォローの操作に失敗しました')
-    }
-  }
+  const toggleFollow = useFollowToggle(handle, patchProfile)
 
   // handle ごとに作り直される(key)ので、初期状態の loading から始まる
   const loadProfile = useCallback(() => {
@@ -101,12 +85,12 @@ function Profile({ handle }: { handle: string }) {
           <p className="muted profile-handle">@{profile.handle}</p>
           {profile.bio && <p className="profile-bio">{profile.bio}</p>}
           <p className="profile-counts">
-            <span>
+            <Link to={`/users/${profile.handle}/following`}>
               <strong>{profile.followingCount}</strong> フォロー中
-            </span>
-            <span>
+            </Link>
+            <Link to={`/users/${profile.handle}/followers`}>
               <strong>{profile.followerCount}</strong> フォロワー
-            </span>
+            </Link>
           </p>
         </div>
         {!profile.isMe && (
