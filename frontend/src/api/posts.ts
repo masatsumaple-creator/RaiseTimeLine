@@ -1,5 +1,5 @@
 import { request } from './client'
-import type { NewPosts, Post, TimelinePage, TimelineTab } from './types'
+import type { LikeResult, NewPosts, Post, TimelinePage, TimelineTab } from './types'
 
 export function fetchTimeline(tab: TimelineTab, cursor?: string | null): Promise<TimelinePage> {
   const query = `tab=${tab}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
@@ -21,4 +21,12 @@ export function updatePost(id: number, body: string): Promise<Post> {
 
 export function deletePost(id: number): Promise<void> {
   return request<void>(`/api/posts/${id}`, { method: 'DELETE', auth: true })
+}
+
+export function likePost(id: number): Promise<LikeResult> {
+  return request<LikeResult>(`/api/posts/${id}/like`, { method: 'PUT', auth: true })
+}
+
+export function unlikePost(id: number): Promise<LikeResult> {
+  return request<LikeResult>(`/api/posts/${id}/like`, { method: 'DELETE', auth: true })
 }

@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { ApiError } from '../api/client'
-import { deletePost, updatePost } from '../api/posts'
+import { deletePost, likePost, unlikePost, updatePost } from '../api/posts'
 import type { Post } from '../api/types'
 import { formatRelativeTime } from '../format/time'
 import { toFormErrors } from '../pages/formErrors'
@@ -26,6 +26,12 @@ export function PostCard({ post, mine, onUpdated, onDeleted }: PostCardProps) {
   const [draft, setDraft] = useState(post.body)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // いいねは連打されうるので、最後に押した操作の結果だけを反映する
+  const likeSeq = useRef(0)
+  const latest = useRef(post)
+  useEffect(() => {
+    latest.current = post
+  }, [post])
 
   function startEdit() {
     setDraft(post.body)
@@ -41,6 +47,23 @@ export function PostCard({ post, mine, onUpdated, onDeleted }: PostCardProps) {
       return true
     }
     return false
+  }
+
+  async function toggleLike() {
+    const before = latest.current
+    const liked = !before.likedByMe
+    const seq = ++likeSeq.current
+    onUpdated({ ...before, likedByMe: liked, likeCount: Math.max(0, before.likeCount + (liked ? 1 : -1)) })
+    try {
+      const result = await (liked ? likePost : unlikePost)(post.id)
+      if (seq === likeSeq.current) onUpdated({ ...latest.current, ...result })
+    } catch (e) {
+      if (seq !== likeSeq.current) return
+      if (!handleMissing(e)) {
+        onUpdated({ ...latest.current, likedByMe: before.likedByMe, likeCount: before.likeCount })
+        toast('いいねに失敗しました')
+      }
+    }
   }
 
   async function handleSave(event: FormEvent) {
@@ -121,6 +144,20 @@ export function PostCard({ post, mine, onUpdated, onDeleted }: PostCardProps) {
           </form>
         ) : (
           <p className="post-body">{post.body}</p>
+        )}
+
+        {!editing && (
+          <div className="post-footer">
+            <button
+              type="button"
+              className={`act like${post.likedByMe ? ' on' : ''}`}
+              aria-pressed={post.likedByMe}
+              aria-label={`いいね ${post.likeCount} 件`}
+              onClick={toggleLike}
+            >
+              {post.likedByMe ? '♥' : '♡'} {post.likeCount}
+            </button>
+          </div>
         )}
 
         {mine && !editing && (

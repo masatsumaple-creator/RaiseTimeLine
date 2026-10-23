@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -14,7 +14,7 @@ const ME = SESSION.user
 const OTHER = { id: 2, handle: 'suzuki', displayName: '鈴木' }
 
 function post(id: number, body: string, overrides: Partial<Post> = {}): Post {
-  return { id, body, createdAt: new Date().toISOString(), editedAt: null, author: ME, ...overrides }
+  return { id, body, createdAt: new Date().toISOString(), editedAt: null, author: ME, likeCount: 0, likedByMe: false, ...overrides }
 }
 
 const page = (items: Post[], nextCursor: string | null = null) => json(200, { items, nextCursor })
@@ -289,6 +289,68 @@ describe('投稿の削除', () => {
 
     expect(screen.getByText('消さない投稿')).toBeInTheDocument()
     expect(server.calls.some((c) => c.method === 'DELETE')).toBe(false)
+  })
+})
+
+describe('いいね', () => {
+  it('押すとすぐに件数が増え、サーバーの結果で確定する。もう一度押すと取り消す', async () => {
+    const server = stubFetch({
+      'POST /api/auth/refresh': REFRESH_OK,
+      [FOLLOWING]: () => page([post(1, '対象の投稿', { likeCount: 3 })]),
+      'PUT /api/posts/1/like': () => json(200, { likeCount: 5, likedByMe: true }),
+      'DELETE /api/posts/1/like': () => json(200, { likeCount: 4, likedByMe: false }),
+    })
+    const user = userEvent.setup()
+
+    renderTimeline()
+    const button = await screen.findByRole('button', { name: /^いいね/ })
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+    expect(button).toHaveTextContent('3')
+    // スクリーンリーダーにも件数が伝わる
+    expect(button).toHaveAccessibleName('いいね 3 件')
+
+    await user.click(button)
+    // 他のユーザーの分も含めた、サーバーの件数で上書きされる
+    await waitFor(() => expect(button).toHaveTextContent('5'))
+    expect(button).toHaveAccessibleName('いいね 5 件')
+    expect(button).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(button)
+    await waitFor(() => expect(button).toHaveTextContent('4'))
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+    expect(server.count('PUT /api/posts/1/like')).toBe(1)
+    expect(server.count('DELETE /api/posts/1/like')).toBe(1)
+  })
+
+  it('失敗したら元に戻してエラーを出す', async () => {
+    stubFetch({
+      'POST /api/auth/refresh': REFRESH_OK,
+      [FOLLOWING]: () => page([post(1, '対象の投稿', { likeCount: 3 })]),
+      'PUT /api/posts/1/like': () => apiError(500, 'INTERNAL_ERROR', 'error'),
+    })
+    const user = userEvent.setup()
+
+    renderTimeline()
+    const button = await screen.findByRole('button', { name: /^いいね/ })
+    await user.click(button)
+
+    expect(await screen.findByText('いいねに失敗しました')).toBeInTheDocument()
+    expect(button).toHaveTextContent('3')
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('投稿が削除されていたら、一覧から取り除く', async () => {
+    stubFetch({
+      'POST /api/auth/refresh': REFRESH_OK,
+      [FOLLOWING]: () => page([post(1, '消えた投稿')]),
+      'PUT /api/posts/1/like': () => apiError(404, 'NOT_FOUND', '投稿が見つかりません'),
+    })
+    const user = userEvent.setup()
+
+    renderTimeline()
+    await user.click(await screen.findByRole('button', { name: /^いいね/ }))
+
+    await waitFor(() => expect(screen.queryByText('消えた投稿')).not.toBeInTheDocument())
   })
 })
 

@@ -1,6 +1,7 @@
 package com.raisetimeline.backend.controller;
 
 import com.raisetimeline.backend.dto.CreatePostRequest;
+import com.raisetimeline.backend.dto.LikeResponse;
 import com.raisetimeline.backend.dto.NewPostsResponse;
 import com.raisetimeline.backend.dto.PostResponse;
 import com.raisetimeline.backend.dto.TimelineResponse;
@@ -56,8 +57,8 @@ public class PostController {
     }
 
     @GetMapping("/posts/{id}")
-    public PostResponse get(@PathVariable Long id) {
-        return postService.get(id);
+    public PostResponse get(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return postService.get(userId(jwt), id);
     }
 
     @PutMapping("/posts/{id}")
@@ -70,6 +71,16 @@ public class PostController {
     public ResponseEntity<Void> delete(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
         postService.delete(userId(jwt), id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/posts/{id}/like")
+    public LikeResponse like(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return postService.like(userId(jwt), id);
+    }
+
+    @DeleteMapping("/posts/{id}/like")
+    public LikeResponse unlike(@AuthenticationPrincipal Jwt jwt, @PathVariable Long id) {
+        return postService.unlike(userId(jwt), id);
     }
 
     private static Long userId(Jwt jwt) {
