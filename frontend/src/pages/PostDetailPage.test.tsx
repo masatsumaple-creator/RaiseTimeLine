@@ -321,7 +321,7 @@ describe('タイムラインからの移動', () => {
     const user = userEvent.setup()
 
     renderAt('/')
-    await user.click(await screen.findByRole('button', { name: 'いいね' }))
+    await user.click(await screen.findByRole('button', { name: /^いいね/ }))
     // いいねでは移動しない
     expect(screen.getByRole('heading', { name: 'タイムライン' })).toBeInTheDocument()
 
