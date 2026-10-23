@@ -25,7 +25,7 @@ function initialState<T>(key: string): State<T> {
 
 /**
  * id を持つ行の一覧(フォロー中 / フォロワー)。先頭ページの取得、続きの取得(無限スクロール用)、
- * 行の差し替えを持つ。key が変わると最初からにする。fetchPage は cursor が無ければ先頭ページを取得する。
+ * 行の差し替え・追加・削除を持つ。key が変わると最初からにする。fetchPage は cursor が無ければ先頭ページを取得する。
  */
 export function usePagedList<T extends { id: number }>(key: string, fetchPage: (cursor?: string | null) => Promise<Page<T>>) {
   const [state, setState] = useState<State<T>>(() => initialState<T>(key))
@@ -99,6 +99,11 @@ export function usePagedList<T extends { id: number }>(key: string, fetchPage: (
     setState((s) => ({ ...s, items: s.items.map((item) => (item.id === id ? { ...item, ...change } : item)) }))
   }, [])
 
+  /** 行の並びを書き換える。updater には、今の行と、続きがあるか(hasNext)が渡される。 */
+  const setItems = useCallback((updater: (items: T[], hasNext: boolean) => T[]) => {
+    setState((s) => ({ ...s, items: updater(s.items, s.nextCursor !== null) }))
+  }, [])
+
   return {
     items: state.items,
     status: state.status,
@@ -107,5 +112,6 @@ export function usePagedList<T extends { id: number }>(key: string, fetchPage: (
     loadMore,
     retry,
     patch,
+    setItems,
   }
 }
