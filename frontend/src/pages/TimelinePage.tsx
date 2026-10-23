@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { TimelineTab } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { NewPostsBar } from '../components/NewPostsBar'
 import { PostCard } from '../components/PostCard'
 import { PostForm } from '../components/PostForm'
 import { useToast } from '../components/toast'
+import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
 import { useNewPostsPolling } from '../hooks/useNewPostsPolling'
 import { useTimeline } from '../hooks/useTimeline'
 import { NETWORK_ERROR_MESSAGE } from './formErrors'
@@ -33,20 +34,7 @@ export function TimelinePage() {
   const newPosts = useNewPostsPolling(tab, timeline.baseId, known, timeline.status === 'ready')
 
   // 一覧の末尾が見えたら、続きを自動で読み込む(無限スクロール)
-  const sentinel = useRef<HTMLDivElement>(null)
-  const { hasNext, more, loadMore } = timeline
-  useEffect(() => {
-    const target = sentinel.current
-    if (!target || !hasNext || more !== 'idle' || typeof IntersectionObserver === 'undefined') return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) loadMore()
-      },
-      { rootMargin: '300px' },
-    )
-    observer.observe(target)
-    return () => observer.disconnect()
-  }, [hasNext, more, loadMore])
+  const sentinel = useInfiniteScroll(timeline.hasNext && timeline.more === 'idle', timeline.loadMore)
 
   function handleTabClick(next: TimelineTab) {
     if (next !== tab) {

@@ -14,7 +14,7 @@ const ME = SESSION.user
 const OTHER = { id: 2, handle: 'suzuki', displayName: '鈴木' }
 
 function post(id: number, body: string, overrides: Partial<Post> = {}): Post {
-  return { id, body, createdAt: new Date().toISOString(), editedAt: null, author: ME, likeCount: 0, likedByMe: false, ...overrides }
+  return { id, body, createdAt: new Date().toISOString(), editedAt: null, author: ME, likeCount: 0, likedByMe: false, commentCount: 0, ...overrides }
 }
 
 const page = (items: Post[], nextCursor: string | null = null) => json(200, { items, nextCursor })

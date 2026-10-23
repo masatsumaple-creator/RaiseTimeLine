@@ -11,6 +11,10 @@ export function fetchNewPosts(tab: TimelineTab, sinceId: number): Promise<NewPos
   return request<NewPosts>(`/api/timeline/new?tab=${tab}&sinceId=${sinceId}`, { auth: true })
 }
 
+export function fetchPost(id: number): Promise<Post> {
+  return request<Post>(`/api/posts/${id}`, { auth: true })
+}
+
 export function createPost(body: string): Promise<Post> {
   return request<Post>('/api/posts', { method: 'POST', body: { body }, auth: true })
 }

@@ -74,7 +74,7 @@ describe('起動時の状態復元とガード', () => {
       [TIMELINE]: (req) =>
         req.headers.Authorization === 'Bearer access-2'
           ? json(200, {
-              items: [{ id: 1, body: 'はじめての投稿', createdAt: new Date().toISOString(), editedAt: null, author: SESSION.user, likeCount: 0, likedByMe: false }],
+              items: [{ id: 1, body: 'はじめての投稿', createdAt: new Date().toISOString(), editedAt: null, author: SESSION.user, likeCount: 0, likedByMe: false, commentCount: 0 }],
               nextCursor: null,
             })
           : apiError(401, 'UNAUTHORIZED', '期限切れ'),

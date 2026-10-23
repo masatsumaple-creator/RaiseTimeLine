@@ -150,6 +150,11 @@ form > .error { margin: 0 0 12px; }
 .post-footer { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
 .act { background: none; border: 0; font: inherit; color: var(--muted); cursor: pointer; padding: 2px 6px; border-radius: 8px; }
 .act:hover { background: #eef1f6; }
+a.act { text-decoration: none; }
+.post.clickable { cursor: pointer; }
+.comments { padding: 0; }
+.comment { display: flex; gap: 12px; padding: 12px 16px; }
+.comment + .comment { border-top: 1px solid var(--line); }
 .act.like.on { color: var(--like); font-weight: 700; }
 
 /* toast */

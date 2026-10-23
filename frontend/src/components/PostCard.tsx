@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link, useNavigate } from 'react-router'
 import { ApiError } from '../api/client'
 import { deletePost, likePost, unlikePost, updatePost } from '../api/posts'
 import type { Post } from '../api/types'
@@ -15,13 +16,19 @@ interface PostCardProps {
   mine: boolean
   onUpdated: (post: Post) => void
   onDeleted: (id: number) => void
+  /** 詳細画面(S-04)での表示。カード全体を詳細へのリンクにせず、コメント数は押せない表示にする */
+  detail?: boolean
 }
 
 const FIELDS = ['body'] as const
 const NOT_FOUND_MESSAGE = '投稿が見つかりません'
 
-export function PostCard({ post, mine, onUpdated, onDeleted }: PostCardProps) {
+/** カード内でクリックされても詳細へ移動しない要素(ボタン・リンク・入力欄など)。 */
+const INTERACTIVE = 'a,button,textarea,input,form'
+
+export function PostCard({ post, mine, onUpdated, onDeleted, detail = false }: PostCardProps) {
   const toast = useToast()
+  const navigate = useNavigate()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(post.body)
   const [error, setError] = useState<string | null>(null)
@@ -101,7 +108,15 @@ export function PostCard({ post, mine, onUpdated, onDeleted }: PostCardProps) {
   const remaining = remainingLength(draft)
 
   return (
-    <article className="panel post">
+    <article
+      className={`panel post${detail ? '' : ' clickable'}`}
+      onClick={(e) => {
+        if (detail || (e.target as Element).closest(INTERACTIVE)) return
+        // 文字を選択している最中のクリックでは移動しない
+        if (window.getSelection()?.toString()) return
+        navigate(`/posts/${post.id}`)
+      }}
+    >
       <Avatar user={post.author} />
       <div className="post-main">
         <header className="post-head">
@@ -148,6 +163,19 @@ export function PostCard({ post, mine, onUpdated, onDeleted }: PostCardProps) {
 
         {!editing && (
           <div className="post-footer">
+            {detail ? (
+              <span className="act" aria-label={`コメント ${post.commentCount} 件`}>
+                💬 {post.commentCount}
+              </span>
+            ) : (
+              <Link
+                className="act"
+                to={`/posts/${post.id}?focus=1`}
+                aria-label={`コメント ${post.commentCount} 件。コメントする`}
+              >
+                💬 {post.commentCount}
+              </Link>
+            )}
             <button
               type="button"
               className={`act like${post.likedByMe ? ' on' : ''}`}

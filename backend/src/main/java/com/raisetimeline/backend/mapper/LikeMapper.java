@@ -19,7 +19,4 @@ public interface LikeMapper {
 
     /** postIds のうち userId がいいね済みの投稿 ID。 */
     List<Long> findLikedPostIds(@Param("userId") Long userId, @Param("postIds") List<Long> postIds);
-
-    record PostCount(Long postId, long count) {
-    }
 }

@@ -9,12 +9,10 @@ import com.raisetimeline.backend.dto.UpdatePostRequest;
 import com.raisetimeline.backend.entity.Post;
 import com.raisetimeline.backend.exception.ApiException;
 import com.raisetimeline.backend.exception.GlobalExceptionHandler;
+import com.raisetimeline.backend.mapper.CommentMapper;
 import com.raisetimeline.backend.mapper.LikeMapper;
+import com.raisetimeline.backend.mapper.PostCount;
 import com.raisetimeline.backend.mapper.PostMapper;
-import java.nio.charset.StandardCharsets;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
-import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -38,15 +36,16 @@ public class PostService {
     private static final String NOT_FOUND = "NOT_FOUND";
     private static final String NOT_FOUND_MESSAGE = "投稿が見つかりません";
     private static final String FORBIDDEN = "FORBIDDEN";
-    private static final String INVALID_CURSOR_MESSAGE = "カーソルが正しくありません";
     private static final String INVALID_TAB_MESSAGE = "tab は following または all を指定してください";
 
     private final PostMapper postMapper;
     private final LikeMapper likeMapper;
+    private final CommentMapper commentMapper;
 
-    public PostService(PostMapper postMapper, LikeMapper likeMapper) {
+    public PostService(PostMapper postMapper, LikeMapper likeMapper, CommentMapper commentMapper) {
         this.postMapper = postMapper;
         this.likeMapper = likeMapper;
+        this.commentMapper = commentMapper;
     }
 
     @Transactional
@@ -67,7 +66,7 @@ public class PostService {
     public TimelineResponse timeline(Long userId, String tab, String cursor, Integer limit) {
         Long authorId = authorFilter(userId, tab);
         int size = limit == null ? DEFAULT_LIMIT : Math.min(Math.max(limit, 1), MAX_LIMIT);
-        Cursor decoded = cursor == null || cursor.isBlank() ? null : Cursor.decode(cursor);
+        Cursor decoded = Cursor.decodeOrNull(cursor);
 
         // 1 件多く取得して、次ページがあるかを判定する
         List<Post> rows = postMapper.findPage(
@@ -77,7 +76,8 @@ public class PostService {
                 size + 1);
         boolean hasNext = rows.size() > size;
         List<Post> page = hasNext ? rows.subList(0, size) : rows;
-        String nextCursor = hasNext ? Cursor.encode(page.get(page.size() - 1)) : null;
+        String nextCursor = hasNext ? Cursor.encode(page.get(page.size() - 1).getCreatedAt(), page.get(page.size() - 1).getId())
+                : null;
         return new TimelineResponse(toResponses(userId, page), nextCursor);
     }
 
@@ -131,7 +131,7 @@ public class PostService {
     }
 
     /**
-     * 投稿一覧をレスポンスに変換する。いいね数・いいね済みは投稿ごとに問い合わせず、
+     * 投稿一覧をレスポンスに変換する。いいね数・いいね済み・コメント数は投稿ごとに問い合わせず、
      * 投稿 ID の一括(IN)で件数に依らず固定のクエリ数で取得する(N+1 を避ける)。
      */
     private List<PostResponse> toResponses(Long userId, List<Post> posts) {
@@ -139,12 +139,20 @@ public class PostService {
             return List.of();
         }
         List<Long> ids = posts.stream().map(Post::getId).toList();
-        Map<Long, Long> likeCounts = likeMapper.countByPostIds(ids).stream()
-                .collect(Collectors.toMap(LikeMapper.PostCount::postId, LikeMapper.PostCount::count));
+        Map<Long, Long> likeCounts = toMap(likeMapper.countByPostIds(ids));
+        Map<Long, Long> commentCounts = toMap(commentMapper.countByPostIds(ids));
         Set<Long> liked = new HashSet<>(likeMapper.findLikedPostIds(userId, ids));
         return posts.stream()
-                .map(p -> PostResponse.from(p, likeCounts.getOrDefault(p.getId(), 0L), liked.contains(p.getId())))
+                .map(p -> PostResponse.from(
+                        p,
+                        likeCounts.getOrDefault(p.getId(), 0L),
+                        liked.contains(p.getId()),
+                        commentCounts.getOrDefault(p.getId(), 0L)))
                 .toList();
+    }
+
+    private static Map<Long, Long> toMap(List<PostCount> counts) {
+        return counts.stream().collect(Collectors.toMap(PostCount::postId, PostCount::count));
     }
 
     private static void requireAffected(int rows) {
@@ -181,25 +189,5 @@ public class PostService {
             return null;
         }
         throw new ApiException(HttpStatus.BAD_REQUEST, GlobalExceptionHandler.VALIDATION_ERROR, INVALID_TAB_MESSAGE);
-    }
-
-    /** 次ページの開始位置(直前ページ末尾の作成日時と id)。クライアントには不透明な文字列として渡す。 */
-    private record Cursor(OffsetDateTime createdAt, Long id) {
-
-        static String encode(Post last) {
-            String raw = last.getCreatedAt() + "," + last.getId();
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
-        }
-
-        static Cursor decode(String value) {
-            try {
-                String raw = new String(Base64.getUrlDecoder().decode(value), StandardCharsets.UTF_8);
-                int comma = raw.lastIndexOf(',');
-                return new Cursor(OffsetDateTime.parse(raw.substring(0, comma)), Long.valueOf(raw.substring(comma + 1)));
-            } catch (IllegalArgumentException | IndexOutOfBoundsException | DateTimeParseException e) {
-                throw new ApiException(
-                        HttpStatus.BAD_REQUEST, GlobalExceptionHandler.VALIDATION_ERROR, INVALID_CURSOR_MESSAGE);
-            }
-        }
     }
 }

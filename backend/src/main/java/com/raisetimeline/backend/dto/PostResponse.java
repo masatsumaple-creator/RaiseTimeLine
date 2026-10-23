@@ -12,14 +12,15 @@ public record PostResponse(
         OffsetDateTime editedAt,
         Author author,
         long likeCount,
-        boolean likedByMe
+        boolean likedByMe,
+        long commentCount
 ) {
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record Author(Long id, String handle, String displayName, String avatarKey) {
     }
 
-    public static PostResponse from(Post post, long likeCount, boolean likedByMe) {
+    public static PostResponse from(Post post, long likeCount, boolean likedByMe, long commentCount) {
         return new PostResponse(
                 post.getId(),
                 post.getBody(),
@@ -28,6 +29,7 @@ public record PostResponse(
                 new Author(post.getUserId(), post.getAuthorHandle(), post.getAuthorDisplayName(),
                         post.getAuthorAvatarKey()),
                 likeCount,
-                likedByMe);
+                likedByMe,
+                commentCount);
     }
 }
