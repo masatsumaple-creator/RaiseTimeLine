@@ -16,7 +16,7 @@
         SELECT COUNT(*) FROM likes WHERE post_id = #{postId}
     </select>
 
-    <select id="countByPostIds" resultType="com.raisetimeline.backend.mapper.LikeMapper$PostCount">
+    <select id="countByPostIds" resultType="com.raisetimeline.backend.mapper.PostCount">
         SELECT post_id AS postId, COUNT(*) AS count
         FROM likes
         WHERE post_id IN

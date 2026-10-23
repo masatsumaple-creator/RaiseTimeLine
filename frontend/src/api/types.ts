@@ -38,6 +38,30 @@ export interface Post {
   author: PostAuthor
   likeCount: number
   likedByMe: boolean
+  commentCount: number
+}
+
+export interface Comment {
+  id: number
+  postId: number
+  body: string
+  /** ISO 8601 */
+  createdAt: string
+  author: PostAuthor
+  /** ログイン中のユーザー自身のコメントか(削除ボタンを出す) */
+  mine: boolean
+}
+
+export interface CommentPage {
+  /** 古い順 */
+  items: Comment[]
+  /** null なら最後のページ */
+  nextCursor: string | null
+}
+
+export interface CommentCreated {
+  comment: Comment
+  commentCount: number
 }
 
 export interface LikeResult {

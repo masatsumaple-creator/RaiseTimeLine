@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.raisetimeline.backend.mapper.CommentMapper">
+
+    <sql id="commentColumns">
+        c.id, c.post_id, c.user_id, c.body, c.created_at,
+        u.handle AS author_handle, u.display_name AS author_display_name, u.avatar_key AS author_avatar_key
+    </sql>
+
+    <insert id="insert" parameterType="com.raisetimeline.backend.entity.Comment"
+            useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+        INSERT INTO comments (post_id, user_id, body)
+        VALUES (#{postId}, #{userId}, #{body})
+    </insert>
+
+    <select id="findById" resultType="com.raisetimeline.backend.entity.Comment">
+        SELECT <include refid="commentColumns"/>
+        FROM comments c JOIN users u ON u.id = c.user_id
+        WHERE c.id = #{id}
+    </select>
+
+    <delete id="delete">
+        DELETE FROM comments WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <select id="findPage" resultType="com.raisetimeline.backend.entity.Comment">
+        SELECT <include refid="commentColumns"/>
+        FROM comments c JOIN users u ON u.id = c.user_id
+        <where>
+            c.post_id = #{postId}
+            <if test="cursorId != null">
+                AND (c.created_at, c.id) &gt; (#{cursorCreatedAt}, #{cursorId})
+            </if>
+        </where>
+        ORDER BY c.created_at, c.id
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByPostId" resultType="long">
+        SELECT COUNT(*) FROM comments WHERE post_id = #{postId}
+    </select>
+
+    <select id="countByPostIds" resultType="com.raisetimeline.backend.mapper.PostCount">
+        SELECT post_id AS postId, COUNT(*) AS count
+        FROM comments
+        WHERE post_id IN
+        <foreach collection="postIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+        GROUP BY post_id
+    </select>
+</mapper>
