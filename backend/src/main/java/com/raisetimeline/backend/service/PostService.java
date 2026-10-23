@@ -7,14 +7,12 @@ import com.raisetimeline.backend.dto.PostResponse;
 import com.raisetimeline.backend.dto.TimelineResponse;
 import com.raisetimeline.backend.dto.UpdatePostRequest;
 import com.raisetimeline.backend.entity.Post;
-import com.raisetimeline.backend.entity.User;
 import com.raisetimeline.backend.exception.ApiException;
 import com.raisetimeline.backend.exception.GlobalExceptionHandler;
 import com.raisetimeline.backend.mapper.CommentMapper;
 import com.raisetimeline.backend.mapper.LikeMapper;
 import com.raisetimeline.backend.mapper.PostCount;
 import com.raisetimeline.backend.mapper.PostMapper;
-import com.raisetimeline.backend.mapper.UserMapper;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +28,6 @@ public class PostService {
 
     public static final String TAB_FOLLOWING = "following";
     public static final String TAB_ALL = "all";
-    public static final int DEFAULT_LIMIT = 20;
-    public static final int MAX_LIMIT = 50;
     /** 新着として一度に返す最大件数。 */
     public static final int MAX_NEW_POSTS = 50;
 
@@ -43,14 +39,14 @@ public class PostService {
     private final PostMapper postMapper;
     private final LikeMapper likeMapper;
     private final CommentMapper commentMapper;
-    private final UserMapper userMapper;
+    private final UserService userService;
 
     public PostService(
-            PostMapper postMapper, LikeMapper likeMapper, CommentMapper commentMapper, UserMapper userMapper) {
+            PostMapper postMapper, LikeMapper likeMapper, CommentMapper commentMapper, UserService userService) {
         this.postMapper = postMapper;
         this.likeMapper = likeMapper;
         this.commentMapper = commentMapper;
-        this.userMapper = userMapper;
+        this.userService = userService;
     }
 
     @Transactional
@@ -75,30 +71,24 @@ public class PostService {
     /** 指定したハンドルのユーザーの投稿を、新しい順に返す(プロフィール S-05)。 */
     @Transactional(readOnly = true)
     public TimelineResponse userPosts(Long viewerId, String handle, String cursor, Integer limit) {
-        User author = userMapper.findByHandle(handle);
-        if (author == null) {
-            throw new ApiException(HttpStatus.NOT_FOUND, NOT_FOUND, "ユーザーが見つかりません");
-        }
-        return page(viewerId, author.getId(), null, cursor, limit);
+        return page(viewerId, userService.requireByHandle(handle).getId(), null, cursor, limit);
     }
 
     /** authorId: そのユーザーの投稿だけ。followerId: そのユーザー自身と、フォロー中のユーザーの投稿。どちらも null なら全ユーザー。 */
     private TimelineResponse page(Long userId, Long authorId, Long followerId, String cursor, Integer limit) {
-        int size = limit == null ? DEFAULT_LIMIT : Math.min(Math.max(limit, 1), MAX_LIMIT);
+        int size = Paging.size(limit);
         Cursor decoded = Cursor.decodeOrNull(cursor);
 
         // 1 件多く取得して、次ページがあるかを判定する
-        List<Post> rows = postMapper.findPage(
-                authorId,
-                followerId,
-                decoded == null ? null : decoded.createdAt(),
-                decoded == null ? null : decoded.id(),
-                size + 1);
-        boolean hasNext = rows.size() > size;
-        List<Post> page = hasNext ? rows.subList(0, size) : rows;
-        String nextCursor = hasNext ? Cursor.encode(page.get(page.size() - 1).getCreatedAt(), page.get(page.size() - 1).getId())
-                : null;
-        return new TimelineResponse(toResponses(userId, page), nextCursor);
+        Paging.Page<Post> page = Paging.slice(
+                postMapper.findPage(
+                        authorId,
+                        followerId,
+                        decoded == null ? null : decoded.createdAt(),
+                        decoded == null ? null : decoded.id(),
+                        size + 1),
+                size, Post::getCreatedAt, Post::getId);
+        return new TimelineResponse(toResponses(userId, page.items()), page.nextCursor());
     }
 
     @Transactional(readOnly = true)

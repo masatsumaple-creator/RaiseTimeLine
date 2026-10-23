@@ -9,7 +9,6 @@ import com.raisetimeline.backend.entity.Comment;
 import com.raisetimeline.backend.exception.ApiException;
 import com.raisetimeline.backend.mapper.CommentMapper;
 import com.raisetimeline.backend.mapper.PostMapper;
-import java.util.List;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,9 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class CommentService {
-
-    public static final int DEFAULT_LIMIT = 20;
-    public static final int MAX_LIMIT = 50;
 
     private static final String NOT_FOUND = "NOT_FOUND";
     private static final String POST_NOT_FOUND_MESSAGE = "投稿が見つかりません";
@@ -38,21 +34,19 @@ public class CommentService {
     @Transactional(readOnly = true)
     public CommentPageResponse list(Long userId, Long postId, String cursor, Integer limit) {
         requirePostExists(postId);
-        int size = limit == null ? DEFAULT_LIMIT : Math.min(Math.max(limit, 1), MAX_LIMIT);
+        int size = Paging.size(limit);
         Cursor decoded = Cursor.decodeOrNull(cursor);
 
         // 1 件多く取得して、次ページがあるかを判定する
-        List<Comment> rows = commentMapper.findPage(
-                postId,
-                decoded == null ? null : decoded.createdAt(),
-                decoded == null ? null : decoded.id(),
-                size + 1);
-        boolean hasNext = rows.size() > size;
-        List<Comment> page = hasNext ? rows.subList(0, size) : rows;
-        String nextCursor = hasNext
-                ? Cursor.encode(page.get(page.size() - 1).getCreatedAt(), page.get(page.size() - 1).getId())
-                : null;
-        return new CommentPageResponse(page.stream().map(c -> CommentResponse.from(c, userId)).toList(), nextCursor);
+        Paging.Page<Comment> page = Paging.slice(
+                commentMapper.findPage(
+                        postId,
+                        decoded == null ? null : decoded.createdAt(),
+                        decoded == null ? null : decoded.id(),
+                        size + 1),
+                size, Comment::getCreatedAt, Comment::getId);
+        return new CommentPageResponse(
+                page.items().stream().map(c -> CommentResponse.from(c, userId)).toList(), page.nextCursor());
     }
 
     @Transactional
