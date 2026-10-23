@@ -40,7 +40,9 @@ class FakeIntersectionObserver {
   }
 }
 
-function reachEnd() {
+/** 末尾を監視する側(useInfiniteScroll の effect)が登録されるのを待ってから、「末尾が見えた」を起こす。 */
+async function reachEnd() {
+  await waitFor(() => expect(observers.some((o) => !o.disconnected)).toBe(true))
   act(() => {
     for (const o of observers.filter((o) => !o.disconnected)) {
       o.callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver)
@@ -153,7 +155,7 @@ describe('プロフィールの表示', () => {
 
     renderAt('/users/suzuki')
     await screen.findByText('新しい投稿')
-    reachEnd()
+    await reachEnd()
 
     expect(await screen.findByText('古い投稿')).toBeInTheDocument()
     expect(screen.getAllByText('新しい投稿')).toHaveLength(1)

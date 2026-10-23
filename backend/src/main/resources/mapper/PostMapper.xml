@@ -26,7 +26,8 @@
     </update>
 
     <delete id="delete">
-        DELETE FROM posts WHERE id = #{id} AND user_id = #{userId}
+        DELETE FROM posts
+        WHERE id = #{id} AND user_id = #{userId}
     </delete>
 
     <select id="findPage" resultType="com.raisetimeline.backend.entity.Post">
@@ -36,7 +37,10 @@
             <if test="authorId != null">AND p.user_id = #{authorId}</if>
             <if test="followerId != null">
                 AND (p.user_id = #{followerId}
-                    OR p.user_id IN (SELECT f.followee_id FROM follows f WHERE f.follower_id = #{followerId}))
+                    OR p.user_id IN (
+                        SELECT f.followee_id
+                        FROM follows f
+                        WHERE f.follower_id = #{followerId}))
             </if>
             <if test="cursorId != null">
                 AND (p.created_at, p.id) &lt; (#{cursorCreatedAt}, #{cursorId})
@@ -54,7 +58,10 @@
             <if test="authorId != null">AND p.user_id = #{authorId}</if>
             <if test="followerId != null">
                 AND (p.user_id = #{followerId}
-                    OR p.user_id IN (SELECT f.followee_id FROM follows f WHERE f.follower_id = #{followerId}))
+                    OR p.user_id IN (
+                        SELECT f.followee_id
+                        FROM follows f
+                        WHERE f.follower_id = #{followerId}))
             </if>
         </where>
         ORDER BY p.id DESC

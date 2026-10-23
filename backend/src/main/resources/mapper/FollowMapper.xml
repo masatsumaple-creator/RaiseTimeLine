@@ -22,10 +22,14 @@
     </select>
 
     <select id="countFollowing" resultType="long">
-        SELECT COUNT(*) FROM follows WHERE follower_id = #{userId}
+        SELECT COUNT(*)
+        FROM follows
+        WHERE follower_id = #{userId}
     </select>
 
     <select id="countFollowers" resultType="long">
-        SELECT COUNT(*) FROM follows WHERE followee_id = #{userId}
+        SELECT COUNT(*)
+        FROM follows
+        WHERE followee_id = #{userId}
     </select>
 </mapper>

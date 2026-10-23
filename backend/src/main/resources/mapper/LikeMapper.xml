@@ -9,11 +9,14 @@
     </insert>
 
     <delete id="delete">
-        DELETE FROM likes WHERE user_id = #{userId} AND post_id = #{postId}
+        DELETE FROM likes
+        WHERE user_id = #{userId} AND post_id = #{postId}
     </delete>
 
     <select id="countByPostId" resultType="long">
-        SELECT COUNT(*) FROM likes WHERE post_id = #{postId}
+        SELECT COUNT(*)
+        FROM likes
+        WHERE post_id = #{postId}
     </select>
 
     <select id="countByPostIds" resultType="com.raisetimeline.backend.mapper.PostCount">
