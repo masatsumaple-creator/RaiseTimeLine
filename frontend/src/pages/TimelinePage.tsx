@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { fetchTimeline } from '../api/posts'
 import type { TimelineTab } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { NewPostsBar } from '../components/NewPostsBar'
@@ -29,7 +30,7 @@ export function TimelinePage() {
   const { user } = useAuth()
   const toast = useToast()
   const [tab, setTab] = useState<TimelineTab>('following')
-  const timeline = useTimeline(tab)
+  const timeline = useTimeline(tab, (cursor) => fetchTimeline(tab, cursor))
   const known = useMemo(() => new Set(timeline.items.map((p) => p.id)), [timeline.items])
   const newPosts = useNewPostsPolling(tab, timeline.baseId, known, timeline.status === 'ready')
 

@@ -15,5 +15,8 @@ public interface UserMapper {
 
     User findByEmail(@Param("email") String email);
 
+    /** ハンドルは大文字小文字を区別せず一致させる。無ければ null。 */
+    User findByHandle(@Param("handle") String handle);
+
     User findById(@Param("id") Long id);
 }

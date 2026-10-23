@@ -7,12 +7,14 @@ import com.raisetimeline.backend.dto.PostResponse;
 import com.raisetimeline.backend.dto.TimelineResponse;
 import com.raisetimeline.backend.dto.UpdatePostRequest;
 import com.raisetimeline.backend.entity.Post;
+import com.raisetimeline.backend.entity.User;
 import com.raisetimeline.backend.exception.ApiException;
 import com.raisetimeline.backend.exception.GlobalExceptionHandler;
 import com.raisetimeline.backend.mapper.CommentMapper;
 import com.raisetimeline.backend.mapper.LikeMapper;
 import com.raisetimeline.backend.mapper.PostCount;
 import com.raisetimeline.backend.mapper.PostMapper;
+import com.raisetimeline.backend.mapper.UserMapper;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,11 +43,14 @@ public class PostService {
     private final PostMapper postMapper;
     private final LikeMapper likeMapper;
     private final CommentMapper commentMapper;
+    private final UserMapper userMapper;
 
-    public PostService(PostMapper postMapper, LikeMapper likeMapper, CommentMapper commentMapper) {
+    public PostService(
+            PostMapper postMapper, LikeMapper likeMapper, CommentMapper commentMapper, UserMapper userMapper) {
         this.postMapper = postMapper;
         this.likeMapper = likeMapper;
         this.commentMapper = commentMapper;
+        this.userMapper = userMapper;
     }
 
     @Transactional
@@ -64,7 +69,20 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public TimelineResponse timeline(Long userId, String tab, String cursor, Integer limit) {
-        Long authorId = authorFilter(userId, tab);
+        return page(userId, authorFilter(userId, tab), cursor, limit);
+    }
+
+    /** 指定したハンドルのユーザーの投稿を、新しい順に返す(プロフィール S-05)。 */
+    @Transactional(readOnly = true)
+    public TimelineResponse userPosts(Long viewerId, String handle, String cursor, Integer limit) {
+        User author = userMapper.findByHandle(handle);
+        if (author == null) {
+            throw new ApiException(HttpStatus.NOT_FOUND, NOT_FOUND, "ユーザーが見つかりません");
+        }
+        return page(viewerId, author.getId(), cursor, limit);
+    }
+
+    private TimelineResponse page(Long userId, Long authorId, String cursor, Integer limit) {
         int size = limit == null ? DEFAULT_LIMIT : Math.min(Math.max(limit, 1), MAX_LIMIT);
         Cursor decoded = Cursor.decodeOrNull(cursor);
 

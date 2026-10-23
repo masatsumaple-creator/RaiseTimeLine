@@ -24,10 +24,10 @@ export function Header() {
         <nav className="nav">
           {status === 'authenticated' && user ? (
             <>
-              <span className="me">
+              <Link className="me" to={`/users/${user.handle}`}>
                 <Avatar user={user} size="sm" />
                 <span className="me-name">{user.displayName}</span>
-              </span>
+              </Link>
               <button className="btn small" type="button" onClick={handleLogout}>
                 ログアウト
               </button>

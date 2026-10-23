@@ -117,10 +117,14 @@ export function PostCard({ post, mine, onUpdated, onDeleted, detail = false }: P
         navigate(`/posts/${post.id}`)
       }}
     >
-      <Avatar user={post.author} />
+      <Link to={`/users/${post.author.handle}`} className="post-avatar" aria-label={`${post.author.displayName}のプロフィール`}>
+        <Avatar user={post.author} />
+      </Link>
       <div className="post-main">
         <header className="post-head">
-          <span className="post-name">{post.author.displayName}</span>
+          <Link className="post-name" to={`/users/${post.author.handle}`}>
+            {post.author.displayName}
+          </Link>
           <span className="muted">@{post.author.handle}</span>
           <span className="muted">·</span>
           <time className="muted" dateTime={post.createdAt}>
