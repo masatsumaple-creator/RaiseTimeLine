@@ -34,7 +34,7 @@ h1 { font-size: 20px; margin: 0 0 12px; }
 .logo { font-weight: 800; color: var(--accent); font-size: 17px; white-space: nowrap; }
 .logo:hover { text-decoration: none; }
 .nav { display: flex; align-items: center; gap: 8px; }
-.me { display: flex; align-items: center; gap: 6px; color: var(--text); }
+.me { display: flex; align-items: center; gap: 6px; color: var(--text); text-decoration: none; }
 .me-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 
 .container { max-width: 640px; margin: 0 auto; padding: 16px; }
@@ -144,7 +144,9 @@ form > .error { margin: 0 0 12px; }
 .post { display: flex; gap: 12px; }
 .post-main { flex: 1; min-width: 0; }
 .post-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; font-size: 14px; }
-.post-name { font-weight: 700; color: var(--text); }
+.post-name { font-weight: 700; color: var(--text); text-decoration: none; }
+.post-name:hover { text-decoration: underline; }
+.post-avatar { display: inline-flex; align-self: flex-start; text-decoration: none; }
 .post-body { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .post-actions { display: flex; gap: 6px; margin-top: 8px; }
 .post-footer { display: flex; align-items: center; gap: 4px; margin-top: 8px; }
@@ -167,3 +169,9 @@ a.act { text-decoration: none; }
   .me-name { display: none; }
   .logo { font-size: 15px; }
 }
+
+/* profile */
+.profile { display: flex; gap: 16px; align-items: flex-start; }
+.profile-main { min-width: 0; }
+.profile-name { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
+.profile-bio { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }

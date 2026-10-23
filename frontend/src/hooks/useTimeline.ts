@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchTimeline } from '../api/posts'
-import type { Post, TimelineTab } from '../api/types'
+import type { Post, TimelinePage } from '../api/types'
 
+type FetchPage = (cursor?: string | null) => Promise<TimelinePage>
 type Status = 'loading' | 'ready' | 'error'
 type MoreStatus = 'idle' | 'loading' | 'error'
 
 interface State {
-  tab: TimelineTab
+  key: string
   items: Post[]
   nextCursor: string | null
   /** サーバーから受け取った一覧の先頭の投稿 id(新着確認の基準)。自分の投稿では進めない */
@@ -15,8 +15,8 @@ interface State {
   more: MoreStatus
 }
 
-function initialState(tab: TimelineTab): State {
-  return { tab, items: [], nextCursor: null, baseId: 0, status: 'loading', more: 'idle' }
+function initialState(key: string): State {
+  return { key, items: [], nextCursor: null, baseId: 0, status: 'loading', more: 'idle' }
 }
 
 /** 既に一覧にある投稿(id 重複)を除いて足し、並び順(id の新しい順)を保つ。 */
@@ -25,62 +25,70 @@ function mergeNewer(items: Post[], added: Post[]): Post[] {
   return [...added.filter((p) => !known.has(p.id)), ...items].sort((a, b) => b.id - a.id)
 }
 
-/** タイムライン 1 タブ分の一覧。先頭ページの取得、続きの取得(無限スクロール用)、投稿の追加・差し替え・削除を持つ。 */
-export function useTimeline(tab: TimelineTab) {
-  const [state, setState] = useState<State>(() => initialState(tab))
+/**
+ * 投稿一覧 1 件分(タイムラインの 1 タブ、ユーザーの投稿一覧など)。key が変わると最初からにする。
+ * 先頭ページの取得、続きの取得(無限スクロール用)、投稿の追加・差し替え・削除を持つ。
+ * fetchPage は key が表す一覧のページ(cursor が無ければ先頭)を取得する。
+ */
+export function useTimeline(key: string, fetchPage: FetchPage) {
+  const [state, setState] = useState<State>(() => initialState(key))
   const loadingMore = useRef(false)
+  const fetchRef = useRef(fetchPage)
+  useEffect(() => {
+    fetchRef.current = fetchPage
+  })
 
-  // タブが変わったら、前のタブの一覧を引き継がずに最初からにする
-  if (state.tab !== tab) setState(initialState(tab))
+  // key が変わったら、前の一覧を引き継がずに最初からにする
+  if (state.key !== key) setState(initialState(key))
 
-  const applyFirstPage = useCallback((forTab: TimelineTab, items: Post[], nextCursor: string | null) => {
+  const applyFirstPage = useCallback((forKey: string, items: Post[], nextCursor: string | null) => {
     setState((s) =>
-      s.tab === forTab ? { ...s, items, nextCursor, baseId: items[0]?.id ?? 0, status: 'ready', more: 'idle' } : s,
+      s.key === forKey ? { ...s, items, nextCursor, baseId: items[0]?.id ?? 0, status: 'ready', more: 'idle' } : s,
     )
   }, [])
 
   useEffect(() => {
     let cancelled = false
-    fetchTimeline(tab)
+    fetchRef.current()
       .then((page) => {
-        if (!cancelled) applyFirstPage(tab, page.items, page.nextCursor)
+        if (!cancelled) applyFirstPage(key, page.items, page.nextCursor)
       })
       .catch(() => {
-        if (!cancelled) setState((s) => (s.tab === tab ? { ...s, status: 'error' } : s))
+        if (!cancelled) setState((s) => (s.key === key ? { ...s, status: 'error' } : s))
       })
     return () => {
       cancelled = true
     }
-  }, [tab, applyFirstPage])
+  }, [key, applyFirstPage])
 
   /** 一覧を残したまま先頭ページを取り直す。失敗したら false。 */
   const refresh = useCallback(async (): Promise<boolean> => {
     try {
-      const page = await fetchTimeline(tab)
-      applyFirstPage(tab, page.items, page.nextCursor)
+      const page = await fetchRef.current()
+      applyFirstPage(key, page.items, page.nextCursor)
       return true
     } catch {
       return false
     }
-  }, [tab, applyFirstPage])
+  }, [key, applyFirstPage])
 
   /** 初回の取得に失敗したときのやり直し。 */
   const retry = useCallback(() => {
-    setState((s) => (s.tab === tab ? { ...s, status: 'loading' } : s))
+    setState((s) => (s.key === key ? { ...s, status: 'loading' } : s))
     void refresh().then((ok) => {
-      if (!ok) setState((s) => (s.tab === tab ? { ...s, status: 'error' } : s))
+      if (!ok) setState((s) => (s.key === key ? { ...s, status: 'error' } : s))
     })
-  }, [tab, refresh])
+  }, [key, refresh])
 
   const cursor = state.nextCursor
   const loadMore = useCallback(() => {
     if (cursor === null || loadingMore.current) return
     loadingMore.current = true
-    setState((s) => (s.tab === tab ? { ...s, more: 'loading' } : s))
-    fetchTimeline(tab, cursor)
+    setState((s) => (s.key === key ? { ...s, more: 'loading' } : s))
+    fetchRef.current(cursor)
       .then((page) => {
         setState((s) =>
-          s.tab === tab && s.nextCursor === cursor
+          s.key === key && s.nextCursor === cursor
             ? {
                 ...s,
                 items: [...s.items, ...page.items.filter((p) => !s.items.some((known) => known.id === p.id))],
@@ -91,12 +99,12 @@ export function useTimeline(tab: TimelineTab) {
         )
       })
       .catch(() => {
-        setState((s) => (s.tab === tab && s.nextCursor === cursor ? { ...s, more: 'error' } : s))
+        setState((s) => (s.key === key && s.nextCursor === cursor ? { ...s, more: 'error' } : s))
       })
       .finally(() => {
         loadingMore.current = false
       })
-  }, [tab, cursor])
+  }, [key, cursor])
 
   /** サーバーから受け取った新着を先頭側に足す。新着確認の基準も進める。 */
   const prepend = useCallback((posts: Post[]) => {

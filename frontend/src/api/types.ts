@@ -90,3 +90,16 @@ export interface SignupInput {
   handle: string
   displayName: string
 }
+
+export interface UserProfile {
+  id: number
+  handle: string
+  displayName: string
+  bio?: string
+  avatarKey?: string
+  followingCount: number
+  followerCount: number
+  followedByMe: boolean
+  /** ログイン中のユーザー自身のプロフィールか */
+  isMe: boolean
+}

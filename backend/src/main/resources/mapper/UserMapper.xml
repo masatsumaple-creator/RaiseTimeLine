@@ -24,6 +24,12 @@
         SELECT <include refid="userColumns"/> FROM users WHERE lower(email) = lower(#{email})
     </select>
 
+    <select id="findByHandle" resultType="com.raisetimeline.backend.entity.User">
+        SELECT <include refid="userColumns"/>
+        FROM users
+        WHERE lower(handle) = lower(#{handle})
+    </select>
+
     <select id="findById" resultType="com.raisetimeline.backend.entity.User">
         SELECT <include refid="userColumns"/> FROM users WHERE id = #{id}
     </select>

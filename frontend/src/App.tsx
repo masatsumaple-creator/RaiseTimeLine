@@ -4,6 +4,7 @@ import { Layout } from './components/Layout'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PostDetailPage } from './pages/PostDetailPage'
+import { ProfilePage } from './pages/ProfilePage'
 import { SignupPage } from './pages/SignupPage'
 import { TimelinePage } from './pages/TimelinePage'
 
@@ -18,6 +19,7 @@ export function App() {
         <Route element={<RequireAuth />}>
           <Route index element={<TimelinePage />} />
           <Route path="/posts/:id" element={<PostDetailPage />} />
+          <Route path="/users/:handle" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>
