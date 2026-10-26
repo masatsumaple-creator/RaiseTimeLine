@@ -115,3 +115,6 @@ export function usePagedList<T extends { id: number }>(key: string, fetchPage: (
     setItems,
   }
 }
+
+/** usePagedList の戻り値の型。一覧を表示する側のコンポーネントが受け取る。 */
+export type PagedList<T extends { id: number }> = ReturnType<typeof usePagedList<T>>

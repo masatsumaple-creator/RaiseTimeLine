@@ -1,9 +1,9 @@
 package com.raisetimeline.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.raisetimeline.backend.entity.FollowEntry;
+import com.raisetimeline.backend.entity.ListedUser;
 
-/** 一覧の 1 行(フォロー中 / フォロワー)。アイコンは画像機能(F-17)の実装までは avatarKey を返す。 */
+/** 一覧の 1 行(フォロー中 / フォロワー / 検索結果)。アイコンは画像機能(F-17)の実装までは avatarKey を返す。 */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record UserSummaryResponse(
         Long id,
@@ -15,9 +15,9 @@ public record UserSummaryResponse(
         boolean isMe
 ) {
 
-    public static UserSummaryResponse of(FollowEntry entry, Long viewerId, boolean followedByMe) {
+    public static UserSummaryResponse of(ListedUser user, Long viewerId, boolean followedByMe) {
         return new UserSummaryResponse(
-                entry.getId(), entry.getHandle(), entry.getDisplayName(), entry.getBio(), entry.getAvatarKey(),
-                followedByMe, entry.getId().equals(viewerId));
+                user.getId(), user.getHandle(), user.getDisplayName(), user.getBio(), user.getAvatarKey(),
+                followedByMe, user.getId().equals(viewerId));
     }
 }

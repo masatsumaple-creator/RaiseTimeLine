@@ -24,6 +24,9 @@ export function Header() {
         <nav className="nav">
           {status === 'authenticated' && user ? (
             <>
+              <Link className="btn small" to="/search">
+                ユーザー検索
+              </Link>
               <Link className="me" to={`/users/${user.handle}`}>
                 <Avatar user={user} size="sm" />
                 <span className="me-name">{user.displayName}</span>

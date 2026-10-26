@@ -1,9 +1,7 @@
 import { Link, useParams } from 'react-router'
 import { fetchFollowList, type FollowListKind } from '../api/users'
-import { UserRow } from '../components/UserRow'
-import { useInfiniteScroll } from '../hooks/useInfiniteScroll'
+import { UserList } from '../components/UserList'
 import { usePagedList } from '../hooks/usePagedList'
-import { NETWORK_ERROR_MESSAGE } from './formErrors'
 
 const TABS: { kind: FollowListKind; label: string }[] = [
   { kind: 'following', label: 'フォロー中' },
@@ -23,7 +21,6 @@ export function FollowListPage({ kind }: { kind: FollowListKind }) {
 
 function FollowList({ kind, handle }: { kind: FollowListKind; handle: string }) {
   const list = usePagedList(`${kind}:${handle}`, (cursor) => fetchFollowList(kind, handle, cursor))
-  const sentinel = useInfiniteScroll(list.hasNext && list.more === 'idle', list.loadMore)
 
   if (list.status === 'missing') {
     return (
@@ -53,36 +50,7 @@ function FollowList({ kind, handle }: { kind: FollowListKind; handle: string }) 
         ))}
       </nav>
 
-      {list.status === 'loading' && <p className="muted center">読み込み中…</p>}
-
-      {list.status === 'error' && (
-        <div className="panel center">
-          <p className="error">{NETWORK_ERROR_MESSAGE}</p>
-          <button type="button" className="btn small" onClick={list.retry}>
-            再読み込み
-          </button>
-        </div>
-      )}
-
-      {list.status === 'ready' && list.items.length === 0 && <p className="panel muted center">{EMPTY_MESSAGES[kind]}</p>}
-
-      <ul className="user-list">
-        {list.items.map((user) => (
-          <UserRow key={user.id} user={user} onChange={list.patch} />
-        ))}
-      </ul>
-
-      {list.status === 'ready' && list.hasNext && (
-        <div ref={sentinel} className="center muted">
-          {list.more === 'error' ? (
-            <button type="button" className="btn small" onClick={list.loadMore}>
-              読み込みに失敗しました。再試行
-            </button>
-          ) : (
-            '読み込み中…'
-          )}
-        </div>
-      )}
+      <UserList list={list} emptyMessage={EMPTY_MESSAGES[kind]} />
     </>
   )
 }
