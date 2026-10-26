@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { fetchTimeline } from '../api/posts'
 import type { TimelineTab } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
@@ -102,9 +103,15 @@ export function TimelinePage() {
           <div className="panel muted center">
             <p>{EMPTY_MESSAGES[tab]}</p>
             {tab === 'following' && (
-              <button type="button" className="btn small" onClick={() => setTab('all')}>
-                「全体」で探す
-              </button>
+              // フォローする人を探す入口: ユーザー検索(S-07)と、「全体」タブ
+              <div className="empty-actions">
+                <Link className="btn small primary" to="/search">
+                  ユーザーを検索
+                </Link>
+                <button type="button" className="btn small" onClick={() => setTab('all')}>
+                  「全体」で探す
+                </button>
+              </div>
             )}
           </div>
         )}

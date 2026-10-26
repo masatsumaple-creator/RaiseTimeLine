@@ -326,4 +326,42 @@ describe('「フォロー中」タブが空のとき', () => {
     expect(await screen.findByText('他人の投稿')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '全体' })).toHaveAttribute('aria-selected', 'true')
   })
+
+  it('「ユーザーを検索」から、ユーザー検索の画面へ移動できる', async () => {
+    stubFetch({
+      'POST /api/auth/refresh': REFRESH_OK,
+      'GET /api/timeline?tab=following': () => page([]),
+    })
+
+    renderAt('/')
+    await userEvent.click(await screen.findByRole('link', { name: 'ユーザーを検索' }))
+
+    expect(await screen.findByRole('searchbox', { name: 'ユーザーを検索' })).toBeInTheDocument()
+  })
+
+  it('「全体」タブが空のときは、案内だけで、検索へのリンクは出さない', async () => {
+    stubFetch({
+      'POST /api/auth/refresh': REFRESH_OK,
+      'GET /api/timeline?tab=following': () => page([]),
+      'GET /api/timeline?tab=all': () => page([]),
+    })
+
+    renderAt('/')
+    await userEvent.click(await screen.findByRole('tab', { name: '全体' }))
+
+    expect(await screen.findByText('まだ投稿がありません。')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'ユーザーを検索' })).not.toBeInTheDocument()
+  })
+
+  it('フォロー中の投稿があるときは、案内も、検索へのリンクも出さない', async () => {
+    stubFetch({
+      'POST /api/auth/refresh': REFRESH_OK,
+      'GET /api/timeline?tab=following': () => page([post(1, '投稿がある')]),
+    })
+
+    renderAt('/')
+
+    expect(await screen.findByText('投稿がある')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'ユーザーを検索' })).not.toBeInTheDocument()
+  })
 })

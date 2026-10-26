@@ -26,6 +26,8 @@ h1 { font-size: 20px; margin: 0 0 12px; }
 
 .muted { color: var(--muted); }
 .center { text-align: center; }
+.empty-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.empty-actions .btn { text-decoration: none; }
 .spacer { flex: 1; }
 
 /* header */
