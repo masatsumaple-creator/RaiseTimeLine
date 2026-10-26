@@ -5,8 +5,10 @@ import com.raisetimeline.backend.dto.UserListResponse;
 import com.raisetimeline.backend.dto.UserProfileResponse;
 import com.raisetimeline.backend.dto.UserSummaryResponse;
 import com.raisetimeline.backend.entity.FollowEntry;
+import com.raisetimeline.backend.entity.ListedUser;
 import com.raisetimeline.backend.entity.User;
 import com.raisetimeline.backend.exception.ApiException;
+import com.raisetimeline.backend.exception.GlobalExceptionHandler;
 import com.raisetimeline.backend.mapper.FollowMapper;
 import com.raisetimeline.backend.mapper.UserMapper;
 import java.time.OffsetDateTime;
@@ -22,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     public static final String CANNOT_FOLLOW_SELF = "CANNOT_FOLLOW_SELF";
+    static final int MAX_SEARCH_TERM_LENGTH = 50;
 
     private static final String NOT_FOUND = "NOT_FOUND";
     private static final String NOT_FOUND_MESSAGE = "ユーザーが見つかりません";
@@ -94,14 +97,58 @@ public class UserService {
                 size, FollowEntry::getFollowedAt, FollowEntry::getId);
         List<FollowEntry> page = paged.items();
 
-        // 一覧の各行を、ログイン中のユーザーがフォロー済みか(1 回のクエリ)
-        Set<Long> followed = page.isEmpty()
-                ? Set.of()
-                : new HashSet<>(followMapper.findFollowedIds(viewerId, page.stream().map(FollowEntry::getId).toList()));
-        List<UserSummaryResponse> items = page.stream()
-                .map(entry -> UserSummaryResponse.of(entry, viewerId, followed.contains(entry.getId())))
+        return new UserListResponse(summaries(viewerId, page), paged.nextCursor());
+    }
+
+    /** 一覧の各行を、ログイン中のユーザーがフォロー済みかとあわせて返す(「フォロー済みか」は 1 回のクエリで求める)。 */
+    private List<UserSummaryResponse> summaries(Long viewerId, List<? extends ListedUser> users) {
+        if (users.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> followed = new HashSet<>(
+                followMapper.findFollowedIds(viewerId, users.stream().map(ListedUser::getId).toList()));
+        return users.stream()
+                .map(user -> UserSummaryResponse.of(user, viewerId, followed.contains(user.getId())))
                 .toList();
-        return new UserListResponse(items, paged.nextCursor());
+    }
+
+    /**
+     * ハンドルと表示名の部分一致で検索する(F-21)。大文字小文字は区別しない。
+     * 結果は「先頭が一致するユーザー → ハンドルの昇順」で、自分自身も含む。続きは OFFSET のカーソルで取る。
+     */
+    @Transactional(readOnly = true)
+    public UserListResponse search(Long viewerId, String q, String cursor, Integer limit) {
+        String term = normalizeSearchTerm(q);
+        int size = Paging.size(limit);
+        int offset = OffsetCursor.decode(cursor);
+        String escaped = escapeLike(term);
+
+        // 1 件多く取得して、次ページがあるかを判定する
+        List<User> rows = userMapper.search("%" + escaped + "%", escaped + "%", size + 1, offset);
+        boolean hasNext = rows.size() > size;
+        List<User> page = hasNext ? rows.subList(0, size) : rows;
+        return new UserListResponse(summaries(viewerId, page), hasNext ? OffsetCursor.encode(offset + size) : null);
+    }
+
+    /** 前後の空白と先頭の @ を取り除く(@taro と taro は同じ結果)。空、または 50 文字を超えるなら 400。 */
+    private static String normalizeSearchTerm(String q) {
+        String term = q == null ? "" : q.strip();
+        if (term.startsWith("@")) {
+            term = term.substring(1).strip();
+        }
+        if (term.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, GlobalExceptionHandler.VALIDATION_ERROR, "検索語を入力してください");
+        }
+        if (term.codePointCount(0, term.length()) > MAX_SEARCH_TERM_LENGTH) {
+            throw new ApiException(
+                    HttpStatus.BAD_REQUEST, GlobalExceptionHandler.VALIDATION_ERROR, "50 文字以内で入力してください");
+        }
+        return term;
+    }
+
+    /** LIKE の特殊文字( % _)を、ワイルドカードではなく文字そのものとして探すためにエスケープする。 */
+    private static String escapeLike(String term) {
+        return term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
     @FunctionalInterface

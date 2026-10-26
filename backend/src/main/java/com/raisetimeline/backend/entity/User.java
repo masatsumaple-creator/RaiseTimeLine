@@ -2,7 +2,7 @@ package com.raisetimeline.backend.entity;
 
 import java.time.OffsetDateTime;
 
-public class User {
+public class User implements ListedUser {
 
     private Long id;
     private String email;

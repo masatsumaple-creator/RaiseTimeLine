@@ -3,7 +3,7 @@ package com.raisetimeline.backend.entity;
 import java.time.OffsetDateTime;
 
 /** フォロー中 / フォロワー一覧の 1 行。followedAt は、そのフォローが作られた日時(カーソルに使う)。 */
-public class FollowEntry {
+public class FollowEntry implements ListedUser {
 
     private Long id;
     private String handle;

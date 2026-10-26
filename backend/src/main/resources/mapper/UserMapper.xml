@@ -40,6 +40,17 @@
         WHERE lower(handle) = lower(#{handle})
     </select>
 
+    <select id="search" resultType="com.raisetimeline.backend.entity.User">
+        SELECT u.id, u.handle, u.display_name, u.bio, u.avatar_key
+        FROM users u
+        WHERE u.handle ILIKE #{containsPattern} ESCAPE '\'
+            OR u.display_name ILIKE #{containsPattern} ESCAPE '\'
+        ORDER BY (u.handle ILIKE #{prefixPattern} ESCAPE '\'
+            OR u.display_name ILIKE #{prefixPattern} ESCAPE '\') DESC,
+            u.handle
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
     <select id="findById" resultType="com.raisetimeline.backend.entity.User">
         SELECT <include refid="userColumns"/>
         FROM users

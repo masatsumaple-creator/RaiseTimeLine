@@ -24,3 +24,8 @@ export function fetchFollowList(kind: FollowListKind, handle: string, cursor?: s
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''
   return request<UserPage>(`/api/users/${encodeURIComponent(handle)}/${kind}${query}`, { auth: true })
 }
+
+export function searchUsers(q: string, cursor?: string | null): Promise<UserPage> {
+  const query = `q=${encodeURIComponent(q)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
+  return request<UserPage>(`/api/search/users?${query}`, { auth: true })
+}
