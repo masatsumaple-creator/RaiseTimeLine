@@ -78,6 +78,38 @@ class ImagesNotConfiguredIntegrationTest {
     }
 
     @Test
+    void postsWithImagesAreUnavailableButTextPostsStillWork() throws Exception {
+        String key = "posts/" + aliceId + "/3f9a2b4c-1d2e-4f50-8a6b-7c8d9e0f1a2b.png";
+
+        mockMvc.perform(post("/api/posts").header(HttpHeaders.AUTHORIZATION, alice)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"body\":\"写真つき\",\"imageKeys\":[\"" + key + "\"]}"))
+                .andExpect(status().isServiceUnavailable());
+        mockMvc.perform(post("/api/posts").header(HttpHeaders.AUTHORIZATION, alice)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"body\":\"文章だけ\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.images.length()").value(0));
+        // 投稿は作られていない(画像の確認に失敗したので、文章だけの投稿の 1 件だけ)
+        org.assertj.core.api.Assertions.assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM posts", Long.class)).isEqualTo(1);
+    }
+
+    @Test
+    void storedImagesAreLeftOutOfPagesInsteadOfBreakingThem() throws Exception {
+        mockMvc.perform(post("/api/posts").header(HttpHeaders.AUTHORIZATION, alice)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"body\":\"hello\"}"))
+                .andExpect(status().isCreated());
+        Long postId = jdbc.queryForObject("SELECT id FROM posts", Long.class);
+        jdbc.update("INSERT INTO post_images (post_id, image_key, sort_order) VALUES (?, ?, 0)", postId,
+                "posts/" + aliceId + "/3f9a2b4c-1d2e-4f50-8a6b-7c8d9e0f1a2b.png");
+
+        mockMvc.perform(get("/api/timeline?tab=all").header(HttpHeaders.AUTHORIZATION, alice))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].body").value("hello"))
+                .andExpect(jsonPath("$.items[0].images.length()").value(0));
+    }
+
+    @Test
     void pagesStillWorkAndShowNoAvatarUrlEvenIfAnAvatarIsStored() throws Exception {
         jdbc.update("UPDATE users SET avatar_key = ? WHERE id = ?", "avatars/" + aliceId + "/3f9a2b4c-1d2e-4f50-8a6b-7c8d9e0f1a2b.png", aliceId);
         mockMvc.perform(post("/api/posts").header(HttpHeaders.AUTHORIZATION, alice)

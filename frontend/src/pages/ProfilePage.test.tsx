@@ -17,7 +17,7 @@ function profile(overrides: Partial<UserProfile> = {}): UserProfile {
 }
 
 function post(id: number, body: string, overrides: Partial<Post> = {}): Post {
-  return { id, body, createdAt: new Date().toISOString(), editedAt: null, author: OTHER, likeCount: 0, likedByMe: false, commentCount: 0, ...overrides }
+  return { id, body, createdAt: new Date().toISOString(), editedAt: null, author: OTHER, likeCount: 0, likedByMe: false, commentCount: 0, images: [], ...overrides }
 }
 
 const page = (items: Post[], nextCursor: string | null = null) => json(200, { items, nextCursor })

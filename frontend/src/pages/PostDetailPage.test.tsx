@@ -22,6 +22,7 @@ function post(overrides: Partial<Post> = {}): Post {
     likeCount: 0,
     likedByMe: false,
     commentCount: 0,
+    images: [],
     ...overrides,
   }
 }

@@ -7,12 +7,16 @@ import com.raisetimeline.backend.dto.PostResponse;
 import com.raisetimeline.backend.dto.TimelineResponse;
 import com.raisetimeline.backend.dto.UpdatePostRequest;
 import com.raisetimeline.backend.entity.Post;
+import com.raisetimeline.backend.entity.PostImage;
 import com.raisetimeline.backend.exception.ApiException;
 import com.raisetimeline.backend.exception.GlobalExceptionHandler;
 import com.raisetimeline.backend.mapper.CommentMapper;
 import com.raisetimeline.backend.mapper.LikeMapper;
 import com.raisetimeline.backend.mapper.PostCount;
+import com.raisetimeline.backend.mapper.PostImageMapper;
 import com.raisetimeline.backend.mapper.PostMapper;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -41,24 +45,55 @@ public class PostService {
     private final CommentMapper commentMapper;
     private final UserService userService;
     private final ImageService imageService;
+    private final PostImageMapper postImageMapper;
 
     public PostService(
             PostMapper postMapper, LikeMapper likeMapper, CommentMapper commentMapper, UserService userService,
-            ImageService imageService) {
+            ImageService imageService,
+            PostImageMapper postImageMapper) {
         this.postMapper = postMapper;
         this.likeMapper = likeMapper;
         this.commentMapper = commentMapper;
         this.userService = userService;
         this.imageService = imageService;
+        this.postImageMapper = postImageMapper;
     }
 
+    /**
+     * 投稿を作る(F-05)。本文か画像のどちらかは必要。画像(imageKeys)は、本人が S3 へアップロードしたものだけ使え、
+     * 並びが表示順になる。投稿と画像は同じトランザクションで保存する。
+     */
     @Transactional
     public PostResponse create(Long userId, CreatePostRequest request) {
+        List<String> imageKeys = request.imageKeys();
+        if (request.body().isEmpty() && imageKeys.isEmpty()) {
+            throw ApiException.invalid("body", "本文または画像を入れてください");
+        }
+        requireUsableImages(userId, imageKeys);
+
         Post post = new Post();
         post.setUserId(userId);
         post.setBody(request.body());
         postMapper.insert(post);
+        if (!imageKeys.isEmpty()) {
+            try {
+                postImageMapper.insertAll(post.getId(), imageKeys);
+            } catch (DataIntegrityViolationException e) {
+                // 同じ画像が、すでに別の投稿に使われている(キーは一意)
+                throw ApiException.invalid("imageKeys", "この画像はすでに使われています");
+            }
+        }
         return toResponse(userId, postMapper.findById(post.getId()));
+    }
+
+    /** 画像のキーを確認する。同じ画像を 2 回は使えず、1 枚ずつ、本人が投稿用にアップロードした画像かを確かめる。 */
+    private void requireUsableImages(Long userId, List<String> imageKeys) {
+        if (new HashSet<>(imageKeys).size() != imageKeys.size()) {
+            throw ApiException.invalid("imageKeys", "同じ画像は 1 枚だけ選べます");
+        }
+        for (String key : imageKeys) {
+            imageService.requireUploaded(userId, ImagePurpose.POST, key);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -105,6 +140,10 @@ public class PostService {
     @Transactional
     public PostResponse update(Long userId, Long id, UpdatePostRequest request) {
         Post post = findOwnedOrThrow(userId, id);
+        if (request.body().isEmpty() && postImageMapper.findKeysByPostId(id).isEmpty()) {
+            // 画像のある投稿は、本文を空にしてもよい(画像だけの投稿になる)
+            throw ApiException.invalid("body", "本文を入力してください");
+        }
         if (post.getBody().equals(request.body())) {
             // 変更なしなら更新日時を触らず、「編集済み」にもしない
             return toResponse(userId, post);
@@ -114,10 +153,13 @@ public class PostService {
         return toResponse(userId, postMapper.findById(id));
     }
 
+    /** 自分の投稿を消す。コメント・いいね・画像の行は連動して消え、S3 の画像は、コミット後に消す。 */
     @Transactional
     public void delete(Long userId, Long id) {
         findOwnedOrThrow(userId, id);
+        List<String> imageKeys = postImageMapper.findKeysByPostId(id);
         requireAffected(postMapper.delete(id, userId));
+        imageKeys.forEach(imageService::deleteAfterCommit);
     }
 
     @Transactional
@@ -144,7 +186,7 @@ public class PostService {
     }
 
     /**
-     * 投稿一覧をレスポンスに変換する。いいね数・いいね済み・コメント数は投稿ごとに問い合わせず、
+     * 投稿一覧をレスポンスに変換する。いいね数・いいね済み・コメント数・画像は投稿ごとに問い合わせず、
      * 投稿 ID の一括(IN)で件数に依らず固定のクエリ数で取得する(N+1 を避ける)。
      */
     private List<PostResponse> toResponses(Long userId, List<Post> posts) {
@@ -155,12 +197,21 @@ public class PostService {
         Map<Long, Long> likeCounts = toMap(likeMapper.countByPostIds(ids));
         Map<Long, Long> commentCounts = toMap(commentMapper.countByPostIds(ids));
         Set<Long> liked = new HashSet<>(likeMapper.findLikedPostIds(userId, ids));
+        Map<Long, List<PostResponse.Image>> images = new HashMap<>();
+        for (PostImage image : postImageMapper.findByPostIds(ids)) {
+            String url = imageService.urlFor(image.getImageKey());
+            if (url != null) {
+                images.computeIfAbsent(image.getPostId(), key -> new ArrayList<>())
+                        .add(new PostResponse.Image(url, image.getSortOrder()));
+            }
+        }
         return posts.stream()
                 .map(p -> PostResponse.from(
                         p,
                         likeCounts.getOrDefault(p.getId(), 0L),
                         liked.contains(p.getId()),
                         commentCounts.getOrDefault(p.getId(), 0L),
+                        images.getOrDefault(p.getId(), List.of()),
                         imageService::urlFor))
                 .toList();
     }

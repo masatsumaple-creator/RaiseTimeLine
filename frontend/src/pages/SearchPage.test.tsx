@@ -61,7 +61,11 @@ function searched(calls: { method: string; path: string }[]): string[] {
     .map((c) => decodeURIComponent(c.path.slice('/api/search/users?q='.length).split('&')[0]))
 }
 
+/** キー入力の間にタイマーを挟まない。負荷が高くても、入力の間隔が、デバウンス(300ms)を超えないようにする。 */
+let fast: ReturnType<typeof userEvent.setup>
+
 beforeEach(() => {
+  fast = userEvent.setup({ delay: null })
   tokenStore.clear()
   observers = []
   vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver)
@@ -80,7 +84,7 @@ describe('検索の開始', () => {
     })
 
     renderAt('/search')
-    await userEvent.type(await screen.findByRole('searchbox', { name: 'ユーザーを検索' }), 'tan')
+    await fast.type(await screen.findByRole('searchbox', { name: 'ユーザーを検索' }), 'tan')
 
     expect(await screen.findByText('tanakaさん')).toBeInTheDocument()
     expect(searched(calls)).toEqual(['tan'])
@@ -93,7 +97,7 @@ describe('検索の開始', () => {
     })
 
     renderAt('/search')
-    await userEvent.type(await screen.findByRole('searchbox'), 'tan{Enter}')
+    await fast.type(await screen.findByRole('searchbox'), 'tan{Enter}')
 
     // 300ms の待ちより前に、リクエストが送られている
     await waitFor(() => expect(count(`${SEARCH}tan`)).toBe(1), { timeout: 200 })
@@ -107,7 +111,7 @@ describe('検索の開始', () => {
     })
 
     renderAt('/search')
-    await userEvent.type(await screen.findByRole('searchbox'), '  @tan {Enter}')
+    await fast.type(await screen.findByRole('searchbox'), '  @tan {Enter}')
 
     expect(await screen.findByText('tanakaさん')).toBeInTheDocument()
     expect(searched(calls)).toEqual(['tan'])
@@ -119,7 +123,7 @@ describe('検索の開始', () => {
     renderAt('/search')
     expect(await screen.findByText('ハンドルか表示名の一部を入力して、ユーザーを探しましょう。')).toBeInTheDocument()
 
-    await userEvent.type(screen.getByRole('searchbox'), '  @ {Enter}')
+    await fast.type(screen.getByRole('searchbox'), '  @ {Enter}')
     await new Promise((resolve) => setTimeout(resolve, 400))
 
     expect(searched(calls)).toEqual([])
@@ -135,12 +139,12 @@ describe('検索の開始', () => {
     renderAt('/search')
     const box = await screen.findByRole('searchbox')
 
-    await userEvent.type(box, 'a'.repeat(51))
+    await fast.type(box, 'a'.repeat(51))
     expect(await screen.findByRole('alert')).toHaveTextContent('50 文字以内で入力してください')
     await new Promise((resolve) => setTimeout(resolve, 400))
     expect(searched(calls)).toEqual([])
 
-    await userEvent.type(box, '{Backspace}')
+    await fast.type(box, '{Backspace}')
     expect(await screen.findByText('見つかりませんでした')).toBeInTheDocument()
     expect(searched(calls)).toEqual(['a'.repeat(50)])
   })
@@ -207,9 +211,9 @@ describe('結果の表示', () => {
 
     renderAt('/search')
     const box = await screen.findByRole('searchbox')
-    await userEvent.type(box, 'ta{Enter}')
+    await fast.type(box, 'ta{Enter}')
     await waitFor(() => expect(resolvers.ta).toBeDefined())
-    await userEvent.type(box, 'n{Enter}')
+    await fast.type(box, 'n{Enter}')
     await waitFor(() => expect(resolvers.tan).toBeDefined())
 
     // 新しい検索(tan)の結果が先に届き、そのあとに古い検索(ta)の結果が届く

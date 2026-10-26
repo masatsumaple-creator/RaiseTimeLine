@@ -115,7 +115,7 @@ class PostApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("  \\n  ")))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.fieldErrors.body").value("本文を入力してください"));
+                .andExpect(jsonPath("$.fieldErrors.body").value("本文または画像を入れてください"));
     }
 
     @Test
