@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent, FormEvent } from 'react'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { uploadImage } from '../api/images'
 import { createPost } from '../api/posts'
 import type { Post } from '../api/types'
+import { useImageDrafts } from '../hooks/useImageDrafts'
 import { NETWORK_ERROR_MESSAGE, toFormErrors } from '../pages/formErrors'
-import { IMAGE_ACCEPT, validateImageFile } from '../validation/image'
+import { IMAGE_ACCEPT } from '../validation/image'
 import { POST_MAX_IMAGES, POST_MESSAGES, remainingLength, validateNewPost } from '../validation/post'
 
 interface PostFormProps {
@@ -14,16 +15,6 @@ interface PostFormProps {
 
 const FIELDS = ['body', 'imageKeys'] as const
 
-/** 選んだ画像 1 枚。uploadedKey は、S3 へアップロード済みならそのキー(投稿に失敗して再試行するとき、やり直さない)。 */
-interface DraftImage {
-  id: number
-  file: File
-  previewUrl: string
-  uploadedKey?: string
-  /** アップロードに失敗したときの文言 */
-  error?: string
-}
-
 /**
  * 投稿フォーム。本文と、最大 4 枚の画像で投稿できる(本文か画像のどちらかは必要)。
  * 画像は、選んだ時点ではどこにも送らず、投稿を押したときに S3 へ直接アップロードしてから、キーを添えて投稿する。
@@ -31,58 +22,17 @@ interface DraftImage {
  */
 export function PostForm({ onCreated }: PostFormProps) {
   const [body, setBody] = useState('')
-  const [drafts, setDrafts] = useState<DraftImage[]>([])
-  const [pickError, setPickError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
-  const nextId = useRef(1)
-
-  // プレビュー用の URL は、使い終わったら(取り除く・投稿できた・画面を離れる)解放する
-  const draftsRef = useRef<DraftImage[]>([])
-  useEffect(() => {
-    draftsRef.current = drafts
+  // 選んだ画像。プレビューの作成と解放、枚数・形式・大きさの検証は、フックに任せる
+  const { drafts, pickError, setPickError, handlePick, remove, clear, update } = useImageDrafts({
+    max: POST_MAX_IMAGES,
+    tooManyMessage: POST_MESSAGES.tooManyImages,
   })
-  useEffect(
-    () => () => {
-      draftsRef.current.forEach((d) => URL.revokeObjectURL(d.previewUrl))
-    },
-    [],
-  )
 
   const remaining = remainingLength(body)
   const invalid = validateNewPost(body, drafts.length) !== null
   const full = drafts.length >= POST_MAX_IMAGES
-
-  function handlePick(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? [])
-    // 同じ画像を続けて選び直しても change が起きるよう、選択は毎回空にする
-    event.target.value = ''
-    if (files.length === 0) return
-
-    const added: DraftImage[] = []
-    let problem: string | null = null
-    for (const file of files) {
-      if (drafts.length + added.length >= POST_MAX_IMAGES) {
-        problem = POST_MESSAGES.tooManyImages
-        break
-      }
-      const fileProblem = validateImageFile(file)
-      if (fileProblem) {
-        problem ??= fileProblem
-        continue
-      }
-      added.push({ id: nextId.current++, file, previewUrl: URL.createObjectURL(file) })
-    }
-    setPickError(problem)
-    if (added.length > 0) setDrafts((current) => [...current, ...added])
-  }
-
-  function handleRemove(id: number) {
-    const removed = drafts.find((d) => d.id === id)
-    if (removed) URL.revokeObjectURL(removed.previewUrl)
-    setDrafts((current) => current.filter((d) => d.id !== id))
-    setPickError(null)
-  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -109,7 +59,7 @@ export function PostForm({ onCreated }: PostFormProps) {
       const failure = failures.get(d.id)
       return failure ? { ...d, error: failure } : d
     })
-    setDrafts(current)
+    update(() => current)
     if (failures.size > 0) {
       setError('アップロードできなかった画像があります。もう一度「投稿する」を押すと、やり直します')
       setSubmitting(false)
@@ -122,16 +72,15 @@ export function PostForm({ onCreated }: PostFormProps) {
         body.trim(),
         current.map((d) => d.uploadedKey as string),
       )
-      current.forEach((d) => URL.revokeObjectURL(d.previewUrl))
+      clear()
       setBody('')
-      setDrafts([])
       onCreated(post)
     } catch (e) {
       const errors = toFormErrors(e, FIELDS)
       setError(errors.fields.body ?? errors.fields.imageKeys ?? errors.form ?? null)
       if (e instanceof ApiError && e.status === 400 && !errors.fields.body) {
         // 画像をサーバーが受け付けなかった(消されたものがある)かもしれないので、次はアップロードからやり直す
-        setDrafts((now) => now.map((d) => ({ ...d, uploadedKey: undefined })))
+        update((now) => now.map((d) => ({ ...d, uploadedKey: undefined })))
       }
     } finally {
       setSubmitting(false)
@@ -163,7 +112,7 @@ export function PostForm({ onCreated }: PostFormProps) {
                 className="draft-remove"
                 aria-label={`画像 ${i + 1} を取り除く`}
                 disabled={submitting}
-                onClick={() => handleRemove(draft.id)}
+                onClick={() => remove(draft.id)}
               >
                 ×
               </button>
