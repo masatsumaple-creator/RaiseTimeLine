@@ -62,5 +62,6 @@ backend は未ログインの `/api/auth/me` が `401`（サーバーが応答�
 
 - 起動中の backend は、DB が起動していないと Flyway の接続エラーで終了する。先に `docker compose up -d db` を実行する
 - `JWT_SECRET`（32バイト以上）が未設定だと backend は起動しない。`./gradlew bootRun` は未設定のときだけ開発用の既定値を渡す（`backend/build.gradle`）。`java -jar` などで起動するときは環境変数で渡す
+- 画像（アイコン）を実際の S3 で試すときだけ、`S3_BUCKET=<バケット名> ./gradlew bootRun` のように、バケット名を環境変数で渡す（未設定なら画像機能は無効で、アップロードは 503）。認証情報は `~/.aws` のプロファイル `raisetimeline-dev`（`bootRun` が既定で使う）。バケット名と手順は README の「ローカルで画像（S3）を使う」を参照
 - 画面からの確認は、backend（8080）と frontend（5173）の両方を起動し、`http://localhost:5173/` を開く。frontend は `/api` を 8080 へ中継するだけで、URL の設定ファイルはない。リフレッシュトークンの Cookie は HTTP の開発環境でも動くよう、`REFRESH_COOKIE_SECURE` の既定は `false`（本番は `true`）
 - アクセストークンの期限切れの動作（401 → 自動更新）を確認したいときは、`JWT_EXPIRATION=20s` を付けて backend を起動する（期限は時計ずれの許容なしでちょうどで切れる）

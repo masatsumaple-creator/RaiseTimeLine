@@ -40,13 +40,16 @@ public class PostService {
     private final LikeMapper likeMapper;
     private final CommentMapper commentMapper;
     private final UserService userService;
+    private final ImageService imageService;
 
     public PostService(
-            PostMapper postMapper, LikeMapper likeMapper, CommentMapper commentMapper, UserService userService) {
+            PostMapper postMapper, LikeMapper likeMapper, CommentMapper commentMapper, UserService userService,
+            ImageService imageService) {
         this.postMapper = postMapper;
         this.likeMapper = likeMapper;
         this.commentMapper = commentMapper;
         this.userService = userService;
+        this.imageService = imageService;
     }
 
     @Transactional
@@ -157,7 +160,8 @@ public class PostService {
                         p,
                         likeCounts.getOrDefault(p.getId(), 0L),
                         liked.contains(p.getId()),
-                        commentCounts.getOrDefault(p.getId(), 0L)))
+                        commentCounts.getOrDefault(p.getId(), 0L),
+                        imageService::urlFor))
                 .toList();
     }
 

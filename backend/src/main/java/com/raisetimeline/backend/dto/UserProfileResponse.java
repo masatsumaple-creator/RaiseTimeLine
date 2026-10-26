@@ -2,15 +2,16 @@ package com.raisetimeline.backend.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.raisetimeline.backend.entity.User;
+import java.util.function.Function;
 
-/** プロフィール(S-05)。アイコンは画像機能(F-17)の実装までは avatarKey を返す。 */
+/** プロフィール(S-05)。avatarUrl はアイコンの表示用の署名付き URL(未設定なら無い)。 */
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record UserProfileResponse(
         Long id,
         String handle,
         String displayName,
         String bio,
-        String avatarKey,
+        String avatarUrl,
         long followingCount,
         long followerCount,
         boolean followedByMe,
@@ -18,9 +19,11 @@ public record UserProfileResponse(
 ) {
 
     public static UserProfileResponse of(
-            User user, Long viewerId, long followingCount, long followerCount, boolean followedByMe) {
+            User user, Long viewerId, long followingCount, long followerCount, boolean followedByMe,
+            Function<String, String> avatarUrl) {
         return new UserProfileResponse(
-                user.getId(), user.getHandle(), user.getDisplayName(), user.getBio(), user.getAvatarKey(),
+                user.getId(), user.getHandle(), user.getDisplayName(), user.getBio(),
+                avatarUrl.apply(user.getAvatarKey()),
                 followingCount, followerCount, followedByMe, user.getId().equals(viewerId));
     }
 }

@@ -17,6 +17,12 @@ repositories {
 	mavenCentral()
 }
 
+dependencyManagement {
+	imports {
+		mavenBom 'software.amazon.awssdk:bom:2.57.0'
+	}
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -25,6 +31,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
+	implementation 'software.amazon.awssdk:s3'
 	runtimeOnly 'org.postgresql:postgresql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
@@ -39,6 +46,11 @@ dependencies {
 
 // ローカル開発専用の署名鍵。JWT_SECRET を設定していれば、そちらを優先する(本番では必ず環境変数で渡す)
 tasks.named('bootRun') {
+	// 画像用の S3 は、バケット名を環境変数 S3_BUCKET で渡す。未設定なら画像機能は無効(アップロードは 503)。
+	// 認証情報は AWS の標準の探し方に任せる。ローカル開発では、既定で ~/.aws の raisetimeline-dev プロファイルを使う
+	if (!System.getenv('AWS_PROFILE') && !System.getenv('AWS_ACCESS_KEY_ID')) {
+		environment 'AWS_PROFILE', 'raisetimeline-dev'
+	}
 	if (!System.getenv('JWT_SECRET')) {
 		environment 'JWT_SECRET', 'local-dev-only-jwt-secret-change-me-0123456789'
 	}

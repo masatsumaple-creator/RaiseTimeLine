@@ -2,6 +2,7 @@ package com.raisetimeline.backend.dto;
 
 import com.raisetimeline.backend.entity.Comment;
 import java.time.OffsetDateTime;
+import java.util.function.Function;
 
 public record CommentResponse(
         Long id,
@@ -13,14 +14,15 @@ public record CommentResponse(
         boolean mine
 ) {
 
-    public static CommentResponse from(Comment comment, Long currentUserId) {
+    public static CommentResponse from(Comment comment, Long currentUserId, Function<String, String> avatarUrl) {
         return new CommentResponse(
                 comment.getId(),
                 comment.getPostId(),
                 comment.getBody(),
                 comment.getCreatedAt(),
                 new PostResponse.Author(comment.getUserId(), comment.getAuthorHandle(),
-                        comment.getAuthorDisplayName(), comment.getAuthorAvatarKey()),
+                        comment.getAuthorDisplayName(),
+                        avatarUrl.apply(comment.getAuthorAvatarKey())),
                 comment.getUserId().equals(currentUserId));
     }
 }

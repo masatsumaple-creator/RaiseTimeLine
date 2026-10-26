@@ -4,6 +4,7 @@ import com.raisetimeline.backend.dto.FollowResponse;
 import com.raisetimeline.backend.dto.UpdateProfileRequest;
 import com.raisetimeline.backend.dto.UserListResponse;
 import com.raisetimeline.backend.dto.UserProfileResponse;
+import com.raisetimeline.backend.dto.UserResponse;
 import com.raisetimeline.backend.dto.UserSummaryResponse;
 import com.raisetimeline.backend.entity.FollowEntry;
 import com.raisetimeline.backend.entity.ListedUser;
@@ -15,6 +16,7 @@ import com.raisetimeline.backend.mapper.UserMapper;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -32,10 +34,12 @@ public class UserService {
 
     private final UserMapper userMapper;
     private final FollowMapper followMapper;
+    private final ImageService imageService;
 
-    public UserService(UserMapper userMapper, FollowMapper followMapper) {
+    public UserService(UserMapper userMapper, FollowMapper followMapper, ImageService imageService) {
         this.userMapper = userMapper;
         this.followMapper = followMapper;
+        this.imageService = imageService;
     }
 
     @Transactional(readOnly = true)
@@ -46,17 +50,46 @@ public class UserService {
                 viewerId,
                 followMapper.countFollowing(user.getId()),
                 followMapper.countFollowers(user.getId()),
-                followMapper.exists(viewerId, user.getId()));
+                followMapper.exists(viewerId, user.getId()),
+                imageService::urlFor);
     }
 
-    /** ログイン中のユーザー自身のプロフィール(表示名と自己紹介)を更新する(F-03)。対象は常に本人の行だけ。 */
+    /**
+     * ログイン中のユーザー自身のプロフィール(表示名・自己紹介・アイコン)を更新する(F-03、F-17)。対象は常に本人の行だけ。
+     * アイコンは、avatarKey があれば新しい画像のキー、removeAvatar が true なら削除、どちらも無ければ変更なし。
+     * 新しいキーは、本人が S3 へアップロードした画像かを確認してから保存し、置き換えた古い画像は、コミット後に S3 から消す。
+     */
     @Transactional
-    public User updateProfile(Long userId, UpdateProfileRequest request) {
-        if (userMapper.updateProfile(userId, request.displayName(), request.bio()) == 0) {
+    public UserResponse updateProfile(Long userId, UpdateProfileRequest request) {
+        User current = userMapper.findById(userId);
+        if (current == null) {
             // トークンは有効だが、ユーザーが削除済みの場合
             throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "ログインが必要です");
         }
-        return userMapper.findById(userId);
+
+        if (request.removesAvatar() && request.avatarKey() != null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, GlobalExceptionHandler.VALIDATION_ERROR,
+                    "アイコンの設定と削除は、同時に指定できません");
+        }
+
+        String oldAvatarKey = current.getAvatarKey();
+        String newAvatarKey = request.removesAvatar() ? null : request.avatarKey();
+        boolean avatarChanged = false;
+        if (request.removesAvatar() || request.avatarKey() != null) {
+            avatarChanged = !Objects.equals(newAvatarKey, oldAvatarKey);
+            if (avatarChanged && newAvatarKey != null) {
+                imageService.requireUploaded(userId, ImagePurpose.AVATAR, newAvatarKey);
+            }
+        }
+        if (!avatarChanged) {
+            newAvatarKey = oldAvatarKey;
+        }
+
+        userMapper.updateProfile(userId, request.displayName(), request.bio(), avatarChanged, newAvatarKey);
+        if (avatarChanged) {
+            imageService.deleteAfterCommit(oldAvatarKey);
+        }
+        return UserResponse.from(userMapper.findById(userId), imageService::urlFor);
     }
 
     @Transactional
@@ -119,7 +152,7 @@ public class UserService {
         Set<Long> followed = new HashSet<>(
                 followMapper.findFollowedIds(viewerId, users.stream().map(ListedUser::getId).toList()));
         return users.stream()
-                .map(user -> UserSummaryResponse.of(user, viewerId, followed.contains(user.getId())))
+                .map(user -> UserSummaryResponse.of(user, viewerId, followed.contains(user.getId()), imageService::urlFor))
                 .toList();
     }
 
