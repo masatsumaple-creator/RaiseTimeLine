@@ -5,6 +5,7 @@ import { FollowListPage } from './pages/FollowListPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { PostDetailPage } from './pages/PostDetailPage'
+import { ProfileEditPage } from './pages/ProfileEditPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { SearchPage } from './pages/SearchPage'
 import { SignupPage } from './pages/SignupPage'
@@ -22,6 +23,7 @@ export function App() {
           <Route index element={<TimelinePage />} />
           <Route path="/posts/:id" element={<PostDetailPage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/settings/profile" element={<ProfileEditPage />} />
           <Route path="/users/:handle" element={<ProfilePage />} />
           <Route path="/users/:handle/following" element={<FollowListPage kind="following" />} />
           <Route path="/users/:handle/followers" element={<FollowListPage kind="followers" />} />

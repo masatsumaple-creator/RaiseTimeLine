@@ -201,3 +201,9 @@ a.act { text-decoration: none; }
 .profile-name { margin: 0; font-size: 20px; overflow-wrap: anywhere; }
 .profile-handle { margin: 2px 0 0; }
 .profile-bio { margin: 8px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* profile edit */
+.profile-edit h1 { margin-bottom: 16px; }
+.profile-edit .counter { display: block; margin-top: 4px; }
+.profile-edit-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.profile-edit-actions .btn { text-decoration: none; }

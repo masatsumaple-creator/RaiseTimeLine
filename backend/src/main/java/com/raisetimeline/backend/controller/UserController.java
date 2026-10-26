@@ -2,16 +2,20 @@ package com.raisetimeline.backend.controller;
 
 import com.raisetimeline.backend.dto.FollowResponse;
 import com.raisetimeline.backend.dto.TimelineResponse;
+import com.raisetimeline.backend.dto.UpdateProfileRequest;
 import com.raisetimeline.backend.dto.UserListResponse;
 import com.raisetimeline.backend.dto.UserProfileResponse;
+import com.raisetimeline.backend.dto.UserResponse;
 import com.raisetimeline.backend.service.PostService;
 import com.raisetimeline.backend.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,6 +30,12 @@ public class UserController {
     public UserController(UserService userService, PostService postService) {
         this.userService = userService;
         this.postService = postService;
+    }
+
+    /** ログイン中のユーザー自身のプロフィールを更新する(対象はトークンのユーザー。リクエストでは指定させない)。 */
+    @PutMapping("/me")
+    public UserResponse updateMe(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody UpdateProfileRequest body) {
+        return UserResponse.from(userService.updateProfile(userId(jwt), body));
     }
 
     @GetMapping("/{handle}")

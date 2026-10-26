@@ -1,6 +1,7 @@
 package com.raisetimeline.backend.service;
 
 import com.raisetimeline.backend.dto.FollowResponse;
+import com.raisetimeline.backend.dto.UpdateProfileRequest;
 import com.raisetimeline.backend.dto.UserListResponse;
 import com.raisetimeline.backend.dto.UserProfileResponse;
 import com.raisetimeline.backend.dto.UserSummaryResponse;
@@ -46,6 +47,16 @@ public class UserService {
                 followMapper.countFollowing(user.getId()),
                 followMapper.countFollowers(user.getId()),
                 followMapper.exists(viewerId, user.getId()));
+    }
+
+    /** ログイン中のユーザー自身のプロフィール(表示名と自己紹介)を更新する(F-03)。対象は常に本人の行だけ。 */
+    @Transactional
+    public User updateProfile(Long userId, UpdateProfileRequest request) {
+        if (userMapper.updateProfile(userId, request.displayName(), request.bio()) == 0) {
+            // トークンは有効だが、ユーザーが削除済みの場合
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "ログインが必要です");
+        }
+        return userMapper.findById(userId);
     }
 
     @Transactional

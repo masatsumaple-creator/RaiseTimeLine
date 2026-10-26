@@ -93,7 +93,11 @@ function Profile({ handle }: { handle: string }) {
             </Link>
           </p>
         </div>
-        {!profile.isMe && (
+        {profile.isMe ? (
+          <Link className="btn small profile-follow" to="/settings/profile">
+            プロフィールを編集
+          </Link>
+        ) : (
           <button
             type="button"
             className={`btn small profile-follow${profile.followedByMe ? '' : ' primary'}`}
