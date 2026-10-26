@@ -9,6 +9,7 @@ import com.raisetimeline.backend.entity.User;
 import com.raisetimeline.backend.exception.ApiException;
 import com.raisetimeline.backend.service.AppUserDetails;
 import com.raisetimeline.backend.service.AuthService;
+import com.raisetimeline.backend.service.ImageService;
 import com.raisetimeline.backend.service.JwtService;
 import com.raisetimeline.backend.service.RefreshTokenService;
 import com.raisetimeline.backend.service.RefreshTokenService.IssuedRefreshToken;
@@ -44,18 +45,21 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final RefreshCookies refreshCookies;
     private final AuthenticationManager authenticationManager;
+    private final ImageService imageService;
 
     public AuthController(
             AuthService authService,
             JwtService jwtService,
             RefreshTokenService refreshTokenService,
             RefreshCookies refreshCookies,
-            AuthenticationManager authenticationManager) {
+            AuthenticationManager authenticationManager,
+            ImageService imageService) {
         this.authService = authService;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
         this.refreshCookies = refreshCookies;
         this.authenticationManager = authenticationManager;
+        this.imageService = imageService;
     }
 
     @PostMapping("/signup")
@@ -108,13 +112,13 @@ public class AuthController {
             // トークンは有効だがユーザーが削除済みの場合
             throw new ApiException(HttpStatus.UNAUTHORIZED, "UNAUTHORIZED", "ログインが必要です");
         }
-        return UserResponse.from(user);
+        return UserResponse.from(user, imageService::urlFor);
     }
 
     private ResponseEntity<AuthResponse> authenticated(HttpStatus status, User user, IssuedRefreshToken refreshToken) {
         return ResponseEntity.status(status)
                 .header(HttpHeaders.SET_COOKIE, refreshCookies.issue(refreshToken.value()).toString())
-                .body(AuthResponse.of(jwtService.issue(user.getId()), user));
+                .body(AuthResponse.of(jwtService.issue(user.getId()), user, imageService::urlFor));
     }
 
     private Authentication authenticate(String email, String password) {

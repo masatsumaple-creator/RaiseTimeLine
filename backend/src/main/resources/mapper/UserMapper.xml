@@ -14,7 +14,11 @@
 
     <update id="updateProfile">
         UPDATE users
-        SET display_name = #{displayName}, bio = #{bio}
+        <set>
+            display_name = #{displayName},
+            bio = #{bio},
+            <if test="avatarChanged">avatar_key = #{avatarKey},</if>
+        </set>
         WHERE id = #{id}
     </update>
 

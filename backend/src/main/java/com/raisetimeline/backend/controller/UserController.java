@@ -35,7 +35,7 @@ public class UserController {
     /** ログイン中のユーザー自身のプロフィールを更新する(対象はトークンのユーザー。リクエストでは指定させない)。 */
     @PutMapping("/me")
     public UserResponse updateMe(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody UpdateProfileRequest body) {
-        return UserResponse.from(userService.updateProfile(userId(jwt), body));
+        return userService.updateProfile(userId(jwt), body);
     }
 
     @GetMapping("/{handle}")

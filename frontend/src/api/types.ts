@@ -3,7 +3,7 @@ export interface User {
   handle: string
   displayName: string
   bio?: string
-  avatarKey?: string
+  avatarUrl?: string
 }
 
 export interface AuthResponse {
@@ -25,7 +25,7 @@ export interface PostAuthor {
   id: number
   handle: string
   displayName: string
-  avatarKey?: string
+  avatarUrl?: string
 }
 
 export interface Post {
@@ -96,7 +96,7 @@ export interface UserProfile {
   handle: string
   displayName: string
   bio?: string
-  avatarKey?: string
+  avatarUrl?: string
   followingCount: number
   followerCount: number
   followedByMe: boolean
@@ -115,7 +115,7 @@ export interface UserSummary {
   handle: string
   displayName: string
   bio?: string
-  avatarKey?: string
+  avatarUrl?: string
   followedByMe: boolean
   /** ログイン中のユーザー自身の行か(フォローボタンを出さない) */
   isMe: boolean

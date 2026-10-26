@@ -24,10 +24,12 @@ public class CommentService {
 
     private final CommentMapper commentMapper;
     private final PostMapper postMapper;
+    private final ImageService imageService;
 
-    public CommentService(CommentMapper commentMapper, PostMapper postMapper) {
+    public CommentService(CommentMapper commentMapper, PostMapper postMapper, ImageService imageService) {
         this.commentMapper = commentMapper;
         this.postMapper = postMapper;
+        this.imageService = imageService;
     }
 
     /** 古い順。著者は JOIN で同時に取得し、mine はログイン中のユーザー ID との比較で求める(追加クエリなし)。 */
@@ -46,7 +48,7 @@ public class CommentService {
                         size + 1),
                 size, Comment::getCreatedAt, Comment::getId);
         return new CommentPageResponse(
-                page.items().stream().map(c -> CommentResponse.from(c, userId)).toList(), page.nextCursor());
+                page.items().stream().map(c -> CommentResponse.from(c, userId, imageService::urlFor)).toList(), page.nextCursor());
     }
 
     @Transactional
@@ -63,7 +65,7 @@ public class CommentService {
             throw new ApiException(HttpStatus.NOT_FOUND, NOT_FOUND, POST_NOT_FOUND_MESSAGE);
         }
         return new CommentCreatedResponse(
-                CommentResponse.from(commentMapper.findById(comment.getId()), userId),
+                CommentResponse.from(commentMapper.findById(comment.getId()), userId, imageService::urlFor),
                 commentMapper.countByPostId(postId));
     }
 

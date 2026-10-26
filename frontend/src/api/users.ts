@@ -34,6 +34,10 @@ export interface UpdateProfileInput {
   displayName: string
   /** 空なら「未設定」になる */
   bio: string
+  /** 新しいアイコンのキー(S3 へアップロード済みの画像)。無ければアイコンは変えない */
+  avatarKey?: string
+  /** true ならアイコンを削除する(avatarKey とは同時に指定できない) */
+  removeAvatar?: boolean
 }
 
 export function updateProfile(input: UpdateProfileInput): Promise<User> {

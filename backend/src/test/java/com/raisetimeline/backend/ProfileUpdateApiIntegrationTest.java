@@ -131,16 +131,16 @@ class ProfileUpdateApiIntegrationTest {
 
     @Test
     void ignoresFieldsThatAreNotEditable() throws Exception {
-        // ハンドル・メール・アイコンは、このリクエストでは変えられない(送られても無視する)
+        // ハンドルとメールは、このリクエストでは変えられない(送られても無視する)。アイコンは avatarKey で変える(AvatarApiIntegrationTest)
         mockMvc.perform(put("/api/users/me")
                         .header(HttpHeaders.AUTHORIZATION, alice)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"displayName":"アリス","handle":"hacked","email":"x@example.com","avatarKey":"avatars/1/x.png","id":999}
+                                {"displayName":"アリス","handle":"hacked","email":"x@example.com","id":999}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.handle").value("alice"))
-                .andExpect(jsonPath("$.avatarKey").doesNotExist());
+                .andExpect(jsonPath("$.avatarUrl").doesNotExist());
 
         Long hacked = jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE handle = 'hacked' OR email = 'x@example.com'", Long.class);
         assertThat(hacked).isZero();
