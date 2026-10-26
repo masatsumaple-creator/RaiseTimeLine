@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { fetchMe } from '../api/auth'
 import { ApiError } from '../api/client'
@@ -9,8 +9,9 @@ import { useAuth } from '../auth/AuthContext'
 import { Avatar } from '../components/Avatar'
 import { TextField } from '../components/TextField'
 import { useToast } from '../components/toast'
+import { useImageDrafts } from '../hooks/useImageDrafts'
 import { validateDisplayName } from '../validation/auth'
-import { IMAGE_ACCEPT, validateImageFile } from '../validation/image'
+import { IMAGE_ACCEPT } from '../validation/image'
 import { remainingBioLength, validateBio } from '../validation/profile'
 import { NETWORK_ERROR_MESSAGE, toFormErrors, type FormErrors } from './formErrors'
 
@@ -57,61 +58,30 @@ export function ProfileEditPage() {
   return <ProfileForm user={state.user} />
 }
 
-/** 選んだ画像。uploadedKey は、S3 へアップロード済みなら、そのキー(保存に失敗して再試行するとき、もう一度アップロードしない)。 */
-interface PickedImage {
-  file: File
-  previewUrl: string
-  uploadedKey?: string
-}
-
 function ProfileForm({ user }: { user: User }) {
   const { updateUser } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const [displayName, setDisplayName] = useState(user.displayName)
   const [bio, setBio] = useState(user.bio ?? '')
-  const [picked, setPicked] = useState<PickedImage | null>(null)
   const [removeAvatar, setRemoveAvatar] = useState(false)
-  const [avatarError, setAvatarError] = useState<string | null>(null)
   const [errors, setErrors] = useState<FormErrors>({ fields: {} })
   const [submitting, setSubmitting] = useState(false)
-
-  // プレビュー用の URL は、使い終わったら(別の画像を選ぶ・削除する・画面を離れる)解放する
-  const previewRef = useRef<string | null>(null)
-  useEffect(
-    () => () => {
-      if (previewRef.current) URL.revokeObjectURL(previewRef.current)
-    },
-    [],
-  )
+  // 選んだアイコン(1 枚だけ。選び直すと置き換わる)。プレビューの作成と解放、形式・大きさの検証は、フックに任せる。
+  // pickError は、画像を選んだとき・サーバーが画像を拒否したときの、エラー文言
+  const { drafts, pickError, setPickError, handlePick, clear, update } = useImageDrafts({
+    max: 1,
+    tooManyMessage: '',
+    replace: true,
+  })
+  const picked = drafts[0] ?? null
 
   const remaining = remainingBioLength(bio)
   const invalid = validateDisplayName(displayName) !== null || validateBio(bio) !== null
 
-  function replacePreview(next: PickedImage | null) {
-    if (previewRef.current) URL.revokeObjectURL(previewRef.current)
-    previewRef.current = next?.previewUrl ?? null
-    setPicked(next)
-  }
-
-  function handlePick(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    // 同じ画像を続けて選び直しても change が起きるよう、選択は毎回空にする
-    event.target.value = ''
-    if (!file) return
-    const problem = validateImageFile(file)
-    if (problem) {
-      setAvatarError(problem)
-      return
-    }
-    setAvatarError(null)
-    setRemoveAvatar(false)
-    replacePreview({ file, previewUrl: URL.createObjectURL(file) })
-  }
-
   function handleRemove() {
-    setAvatarError(null)
-    replacePreview(null)
+    setPickError(null)
+    clear()
     // 今のアイコンがあるときだけ、保存で削除する(選んだ画像を取り消しただけなら、今のアイコンのまま)
     setRemoveAvatar(picked === null && Boolean(user.avatarUrl))
   }
@@ -141,7 +111,7 @@ function ProfileForm({ user }: { user: User }) {
           return
         }
         // 保存に失敗して再試行するときは、アップロード済みの画像を使い回す
-        setPicked({ ...picked, uploadedKey: avatarKey })
+        update((current) => current.map((d) => (d.id === picked.id ? { ...d, uploadedKey: avatarKey } : d)))
       }
       const updated = await updateProfile({
         displayName: displayName.trim(),
@@ -155,8 +125,9 @@ function ProfileForm({ user }: { user: User }) {
     } catch (error) {
       if (error instanceof ApiError && error.status === 400 && !error.fieldErrors) {
         // 画像の確認に失敗した(形式・大きさ・アップロードの確認など)。選び直せるようにする
-        setAvatarError(error.message)
-        replacePreview(null)
+        setPickError(error.message)
+        clear()
+        setRemoveAvatar(false)
         setErrors({ fields: {} })
       } else {
         setErrors(toFormErrors(error, FIELDS))
@@ -191,7 +162,7 @@ function ProfileForm({ user }: { user: User }) {
         </div>
         <span className="hint">JPEG・PNG・WebP、5MB まで</span>
         <p className="error" role="alert">
-          {avatarError}
+          {pickError}
         </p>
       </div>
 
