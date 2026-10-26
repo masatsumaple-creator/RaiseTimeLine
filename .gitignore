@@ -1,4 +1,4 @@
-﻿# Claude Code local settings (per-user, not shared)
+# Claude Code local settings (per-user, not shared)
 .claude/settings.local.json
 
 # Secrets / env
