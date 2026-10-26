@@ -14,7 +14,7 @@ const ME = SESSION.user
 const OTHER = { id: 2, handle: 'suzuki', displayName: '鈴木' }
 
 function post(id: number, body: string, overrides: Partial<Post> = {}): Post {
-  return { id, body, createdAt: new Date().toISOString(), editedAt: null, author: ME, likeCount: 0, likedByMe: false, commentCount: 0, ...overrides }
+  return { id, body, createdAt: new Date().toISOString(), editedAt: null, author: ME, likeCount: 0, likedByMe: false, commentCount: 0, images: [], ...overrides }
 }
 
 const page = (items: Post[], nextCursor: string | null = null) => json(200, { items, nextCursor })
@@ -165,7 +165,7 @@ describe('投稿の作成', () => {
     expect(articles[0]).toHaveTextContent('こんにちは')
     expect(articles[1]).toHaveTextContent('既存の投稿')
     expect(screen.getByLabelText('いまどうしてる?')).toHaveValue('')
-    expect(server.calls.find((c) => c.path === '/api/posts')?.body).toEqual({ body: 'こんにちは' })
+    expect(server.calls.find((c) => c.path === '/api/posts')?.body).toEqual({ body: 'こんにちは', imageKeys: [] })
     expect(server.count(FOLLOWING)).toBe(1)
   })
 

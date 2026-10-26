@@ -28,6 +28,13 @@ export interface PostAuthor {
   avatarUrl?: string
 }
 
+/** 投稿に付いた画像 1 枚。url は表示用の署名付き URL */
+export interface PostImage {
+  url: string
+  /** 表示順(0 から) */
+  sortOrder: number
+}
+
 export interface Post {
   id: number
   body: string
@@ -39,6 +46,8 @@ export interface Post {
   likeCount: number
   likedByMe: boolean
   commentCount: number
+  /** 付いている画像(表示順)。無ければ空 */
+  images: PostImage[]
 }
 
 export interface Comment {

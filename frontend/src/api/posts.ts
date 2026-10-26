@@ -15,8 +15,9 @@ export function fetchPost(id: number): Promise<Post> {
   return request<Post>(`/api/posts/${id}`, { auth: true })
 }
 
-export function createPost(body: string): Promise<Post> {
-  return request<Post>('/api/posts', { method: 'POST', body: { body }, auth: true })
+/** imageKeys は、S3 へアップロード済みの画像のキー(並びが表示順)。本文か画像のどちらかは必要。 */
+export function createPost(body: string, imageKeys: string[] = []): Promise<Post> {
+  return request<Post>('/api/posts', { method: 'POST', body: { body, imageKeys }, auth: true })
 }
 
 export function updatePost(id: number, body: string): Promise<Post> {

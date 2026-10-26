@@ -8,6 +8,7 @@ import { formatRelativeTime } from '../format/time'
 import { toFormErrors } from '../pages/formErrors'
 import { remainingLength, validatePostBody } from '../validation/post'
 import { Avatar } from './Avatar'
+import { PostImages } from './PostImages'
 import { useToast } from './toast'
 
 interface PostCardProps {
@@ -33,6 +34,8 @@ export function PostCard({ post, mine, onUpdated, onDeleted, detail = false }: P
   const [draft, setDraft] = useState(post.body)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  // 画像のある投稿は、本文を空にして編集してもよい(画像だけの投稿になる)
+  const hasImages = post.images.length > 0
   // いいねは連打されうるので、最後に押した操作の結果だけを反映する
   const likeSeq = useRef(0)
   const latest = useRef(post)
@@ -75,7 +78,7 @@ export function PostCard({ post, mine, onUpdated, onDeleted, detail = false }: P
 
   async function handleSave(event: FormEvent) {
     event.preventDefault()
-    if (validatePostBody(draft) !== null || busy) return
+    if (validatePostBody(draft, hasImages) !== null || busy) return
     setBusy(true)
     setError(null)
     try {
@@ -155,15 +158,17 @@ export function PostCard({ post, mine, onUpdated, onDeleted, detail = false }: P
                 <button type="button" className="btn small" onClick={() => setEditing(false)} disabled={busy}>
                   キャンセル
                 </button>
-                <button type="submit" className="btn small primary" disabled={busy || validatePostBody(draft) !== null}>
+                <button type="submit" className="btn small primary" disabled={busy || validatePostBody(draft, hasImages) !== null}>
                   {busy ? '保存中…' : '保存'}
                 </button>
               </span>
             </div>
           </form>
         ) : (
-          <p className="post-body">{post.body}</p>
+          post.body !== '' && <p className="post-body">{post.body}</p>
         )}
+
+        <PostImages images={post.images} />
 
         {!editing && (
           <div className="post-footer">
