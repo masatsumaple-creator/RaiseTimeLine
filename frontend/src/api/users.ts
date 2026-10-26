@@ -1,5 +1,5 @@
 import { request } from './client'
-import type { FollowResult, TimelinePage, UserPage, UserProfile } from './types'
+import type { FollowResult, TimelinePage, User, UserPage, UserProfile } from './types'
 
 export function fetchProfile(handle: string): Promise<UserProfile> {
   return request<UserProfile>(`/api/users/${encodeURIComponent(handle)}`, { auth: true })
@@ -28,4 +28,14 @@ export function fetchFollowList(kind: FollowListKind, handle: string, cursor?: s
 export function searchUsers(q: string, cursor?: string | null): Promise<UserPage> {
   const query = `q=${encodeURIComponent(q)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`
   return request<UserPage>(`/api/search/users?${query}`, { auth: true })
+}
+
+export interface UpdateProfileInput {
+  displayName: string
+  /** 空なら「未設定」になる */
+  bio: string
+}
+
+export function updateProfile(input: UpdateProfileInput): Promise<User> {
+  return request<User>('/api/users/me', { method: 'PUT', body: input, auth: true })
 }

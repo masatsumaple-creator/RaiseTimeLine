@@ -10,6 +10,9 @@ public interface UserMapper {
 
     void insert(User user);
 
+    /** 更新した行数を返す。ユーザーが無ければ 0。bio が null なら「未設定」にする。 */
+    int updateProfile(@Param("id") Long id, @Param("displayName") String displayName, @Param("bio") String bio);
+
     boolean existsByEmail(@Param("email") String email);
 
     boolean existsByHandle(@Param("handle") String handle);

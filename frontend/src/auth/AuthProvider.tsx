@@ -60,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         signOut()
       },
+      updateUser: setUser,
     }),
     [status, user, signIn, signOut],
   )
