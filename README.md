@@ -120,6 +120,26 @@ docs/
 
 機能を追加・変更するときは、コードと合わせて要件定義書・機能一覧・該当する機能定義書も更新する。
 
+### API仕様書（自動生成）
+
+API の入出力（パス・パラメータ・リクエスト/レスポンスの型・認証の要否）は、Controller と DTO から [springdoc-openapi](https://springdoc.org/) が自動で生成する。機能定義書の API 記述と食い違う場合は、コードから生成した仕様書を優先する。
+
+| 見る場所 | 内容 |
+| --- | --- |
+| `http://localhost:8080/api/swagger-ui.html` | Swagger UI。バックエンド起動中に開く。右上の Authorize にアクセストークンを入れると、認証が必要な API も試せる |
+| `http://localhost:8080/api/v3/api-docs` | OpenAPI の JSON（起動中のバックエンドから取得） |
+| [docs/api/openapi.json](docs/api/openapi.json) | 上の JSON をコミットしたもの。起動しなくても読める |
+
+Controller / DTO を変えたら、仕様書を生成し直してコミットする（Docker が必要。統合テストと同じく Testcontainers を使う）。
+
+```
+cd backend
+./gradlew generateOpenApi
+```
+
+- 説明文は Controller の `@Tag` / `@Operation`、DTO の Jakarta Validation から作られる。共通のエラー応答（`ErrorResponse`）と Bearer 認証の定義は `config/OpenApiConfig.java`
+- 本番では環境変数 `SPRINGDOC_ENABLED=false` で、Swagger UI と API 仕様の公開を止める
+
 ### 図の参照先
 
 図は Claude Docs 側にだけ残っている旧版（非公開。作成したアカウントでのみ開ける）。文章の正本は `docs/` なので、図と食い違う場合は `docs/` を優先する。

@@ -32,6 +32,7 @@ dependencies {
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:4.0.1'
 	implementation 'software.amazon.awssdk:s3'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
 	runtimeOnly 'org.postgresql:postgresql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
@@ -58,4 +59,19 @@ tasks.named('bootRun') {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+// API 仕様書(docs/api/openapi.json)を、コードから生成し直す。Controller / DTO を変えたら実行してコミットする
+tasks.register('generateOpenApi', Test) {
+	group = 'documentation'
+	description = 'Controller と DTO から OpenAPI の仕様書(docs/api/openapi.json)を生成する'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform()
+	filter {
+		includeTestsMatching 'com.raisetimeline.backend.OpenApiSpecIntegrationTest'
+	}
+	systemProperty 'openapi.output', rootProject.file('../docs/api/openapi.json').absolutePath
+	// 常に実行する(入力が変わらなくても、仕様書を書き出し直す)
+	outputs.upToDateWhen { false }
 }

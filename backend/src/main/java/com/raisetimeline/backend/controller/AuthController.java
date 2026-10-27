@@ -13,6 +13,11 @@ import com.raisetimeline.backend.service.ImageService;
 import com.raisetimeline.backend.service.JwtService;
 import com.raisetimeline.backend.service.RefreshTokenService;
 import com.raisetimeline.backend.service.RefreshTokenService.IssuedRefreshToken;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.Optional;
 import org.springframework.http.HttpHeaders;
@@ -33,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "認証", description = "サインアップ・ログイン・トークン更新")
 public class AuthController {
 
     private static final String LOGIN_FAILED = "LOGIN_FAILED";
@@ -62,6 +68,7 @@ public class AuthController {
         this.imageService = imageService;
     }
 
+    @Operation(summary = "サインアップ", description = "登録と同時にログイン状態にする。リフレッシュトークンは Cookie で返す。")
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> signup(@Valid @RequestBody SignupRequest body) {
         // 登録直後はそのままログイン状態(トークン発行済み)にする
@@ -69,6 +76,7 @@ public class AuthController {
         return authenticated(HttpStatus.CREATED, user, refreshTokenService.issue(user.getId()));
     }
 
+    @Operation(summary = "ログイン", description = "アクセストークンを返し、リフレッシュトークンを Cookie に設定する。")
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest body) {
         Authentication authentication = authenticate(body.email(), body.password());
@@ -77,6 +85,11 @@ public class AuthController {
     }
 
     /** Cookie のリフレッシュトークンで、新しいアクセストークンを発行する(リフレッシュトークンもローテーションする)。 */
+    @Operation(summary = "アクセストークンの更新", description = "Cookie のリフレッシュトークンで新しいアクセストークンを発行する。リフレッシュトークンもローテーションする。")
+    @ApiResponse(responseCode = "200", description = "更新成功",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class)))
+    @ApiResponse(responseCode = "401", description = "リフレッシュトークンが無効・期限切れ",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(@CookieValue(name = RefreshCookies.NAME, required = false) String refreshToken) {
         Optional<IssuedRefreshToken> rotated = (refreshToken == null || refreshToken.isBlank())
@@ -95,6 +108,7 @@ public class AuthController {
      * リフレッシュトークンの系統を失効させ、Cookie を消す。アクセストークンが期限切れでも実行できるよう認証は不要。
      * 発行済みのアクセストークンは、有効期限が切れるまで使える。
      */
+    @Operation(summary = "ログアウト", description = "リフレッシュトークンを失効させ、Cookie を消す。")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@CookieValue(name = RefreshCookies.NAME, required = false) String refreshToken) {
         if (refreshToken != null && !refreshToken.isBlank()) {
@@ -105,6 +119,7 @@ public class AuthController {
                 .build();
     }
 
+    @Operation(summary = "ログイン中のユーザーを取得")
     @GetMapping("/me")
     public UserResponse me(@AuthenticationPrincipal Jwt jwt) {
         User user = authService.findById(Long.valueOf(jwt.getSubject()));
