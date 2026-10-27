@@ -78,7 +78,7 @@ Checkstyle/Spotless/PMD等の静的解析ツールは導入されていない（
 - **例外処理の一元化**: `@ControllerAdvice`/`@ExceptionHandler` があるか。なければ、`ResponseStatusException`や手動nullチェックがControllerごとにバラバラに書かれていないか。
 - **テストカバレッジ**: `backend/src/test/`配下にController/Mapperを通した結合テスト（Testcontainers）があるか（`contextLoads()`のみでないか）。
 - **パッケージ構成の一貫性**: 全クラスが適切なパッケージ（`controller`/`service`/`mapper`/`entity`/`dto`/`config`/`exception`）に収まっているか。
-- **セキュリティ設定**: [SecurityConfig.java](../../../backend/src/main/java/com/raisetimeline/backend/config/SecurityConfig.java) で `/api/**` が既定で認証必須か、セッションがステートレスか、JWTの署名鍵（`JWT_SECRET`）がコードやymlにハードコードされていないか（`bootRun` の開発用既定値は `build.gradle` のみ）、署名・有効期限・発行者を検証しているか。リフレッシュトークンは、Cookie が `HttpOnly`・`SameSite=Strict`・`Path=/api/auth` か（[RefreshCookies.java](../../../backend/src/main/java/com/raisetimeline/backend/controller/RefreshCookies.java)）、`Secure` が環境変数（`REFRESH_COOKIE_SECURE`）で切り替え可能か、DBにはハッシュだけを保存しレスポンスボディに生の値を含めていないか、ローテーションが1本の条件付きUPDATEで原子的か（[RefreshTokenService.java](../../../backend/src/main/java/com/raisetimeline/backend/service/RefreshTokenService.java)）。CORSは開発時もViteプロキシで同一オリジン化する方針のため、CORS設定が増えていないか。
+- **セキュリティ設定**: [SecurityConfig.java](../../../backend/src/main/java/com/raisetimeline/backend/config/SecurityConfig.java) で `/api/**` が既定で認証必須か、セッションがステートレスか、JWTの署名鍵（`JWT_SECRET`）がコードやymlにハードコードされていないか（`bootRun` の開発用既定値は `build.gradle` のみ）、署名・有効期限・発行者を検証しているか。リフレッシュトークンは、Cookie が `HttpOnly`・`SameSite=Strict`・`Path=/api/auth` か（[RefreshCookies.java](../../../backend/src/main/java/com/raisetimeline/backend/controller/RefreshCookies.java)）、`Secure` が環境変数（`REFRESH_COOKIE_SECURE`）で切り替え可能か、DBにはハッシュだけを保存しレスポンスボディに生の値を含めていないか、ローテーションが1本の条件付きUPDATEで原子的か（[RefreshTokenService.java](../../../backend/src/main/java/com/raisetimeline/backend/service/RefreshTokenService.java)）。CORSは開発時もViteプロキシで同一オリジン化する方針のため、CORS設定が増えていないか。API 仕様（`/api/v3/api-docs`・`/api/swagger-ui.html`）だけが `permitAll` で、それ以外が認証必須のままか、本番で `SPRINGDOC_ENABLED=false` により公開を止められるか。
 - **バリデーション**: DTOに`@Valid`/Jakarta Bean Validationアノテーションが付与されているか。
 
 最後に `./gradlew test`（Windowsでは `.\gradlew.bat test`。Git Bashから`./gradlew`を直接呼ぶと`ClassNotFoundException: GradleWrapperMain`で失敗することがあるため、その場合はPowerShellの`.\gradlew.bat`を使う）を実行し、既存テストが壊れていないことを確認する。
@@ -118,7 +118,8 @@ terraform validate
 1. `backend/src/main/java/.../controller/*.java` の実際のエンドポイント一覧を洗い出す。
 2. `frontend/src/components/`・`frontend/src/api/` で実装済みの機能（作成/編集/削除/D&D/検索/並び替え等）を洗い出す。
 3. `infra/`配下のTerraformリソース構成を洗い出す（`docs/infrastructure.md`が存在する場合、構成図・ディレクトリ構成の説明と実際のリソース定義が一致しているか）。
-4. 上記1〜3と、`docs/requirements/data-model.md`（ER図と実装の差分）、`docs/requirements/roadmap.md`（実装済み機能が「候補」のまま残っていないか）、各READMEの「対応済み/未対応」記述を突き合わせ、ズレていれば実態に合わせて修正する。
+4. API 仕様書（`docs/api/openapi.json`）が最新か確認する。`cd backend && ./gradlew generateOpenApi` を実行し、`git diff docs/api` に差分が出たら、Controller / DTO の変更に仕様書が追従していない。生成し直した仕様書を残す。あわせて、機能定義書（`docs/1*_*.md`）の API の表のパス・認証・成功/失敗が、仕様書と一致しているか突き合わせる（食い違う場合は仕様書が正）
+5. 上記1〜3と、`docs/requirements/data-model.md`（ER図と実装の差分）、`docs/requirements/roadmap.md`（実装済み機能が「候補」のまま残っていないか）、各READMEの「対応済み/未対応」記述を突き合わせ、ズレていれば実態に合わせて修正する。
 
 ## 参考
 

@@ -16,3 +16,14 @@
 - [17_機能定義書_プロフィール](./17_機能定義書_プロフィール.md)
 - [20_インフラ構成図](./20_インフラ構成図.md)
 
+- [api/openapi.json](./api/openapi.json) — API 仕様書(OpenAPI)。コードから自動生成
+
+## API 仕様書
+
+API のパス・パラメータ・リクエスト/レスポンスの型・認証の要否は、Controller と DTO から [springdoc-openapi](https://springdoc.org/) が自動で生成します。機能定義書の API の表は読みやすくまとめたもので、食い違う場合は仕様書が正です。
+
+- Swagger UI: バックエンド起動中に `http://localhost:8080/api/swagger-ui.html` を開く。右上の Authorize にアクセストークンを入れると、認証が必要な API も試せる
+- OpenAPI の JSON: `http://localhost:8080/api/v3/api-docs`(起動中のバックエンドから取得)
+- [openapi.json](./api/openapi.json): 上の JSON をコミットしたもの。起動しなくても読める
+
+Controller / DTO を変えたら、`cd backend && ./gradlew generateOpenApi` で `openapi.json` を生成し直してコミットします(Docker が必要)。本番では環境変数 `SPRINGDOC_ENABLED=false` で、Swagger UI と API 仕様の公開を止めます。
