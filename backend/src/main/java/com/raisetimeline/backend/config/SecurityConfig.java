@@ -48,6 +48,10 @@ public class SecurityConfig {
                         // refresh / logout は Cookie のリフレッシュトークンで動くため、アクセストークンは不要
                         .requestMatchers(HttpMethod.POST,
                                 "/api/auth/signup", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
+                        // API 仕様と Swagger UI。SPRINGDOC_ENABLED=false なら、そもそもエンドポイントが存在しない
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v3/api-docs", "/api/v3/api-docs/**",
+                                "/api/swagger-ui.html", "/api/swagger-ui/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> { })
