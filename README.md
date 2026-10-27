@@ -38,7 +38,7 @@ React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像�
 | 領域 | 採用 |
 | --- | --- |
 | フロントエンド | React 19 + TypeScript 6 + Vite 8（react-router、テストは Vitest + Testing Library） |
-| バックエンド | Spring Boot 4.0.8（Java 25、Gradle）。REST API、認証は Spring Security + JWT（アクセストークンを Bearer ヘッダーで送り、リフレッシュトークンは HttpOnly Cookie）、DBアクセスは MyBatis、スキーマ管理は Flyway |
+| バックエンド | Spring Boot 4.0.8（Java 25、Gradle）。REST API、API 仕様書は springdoc-openapi でコードから自動生成、認証は Spring Security + JWT（アクセストークンを Bearer ヘッダーで送り、リフレッシュトークンは HttpOnly Cookie）、DBアクセスは MyBatis、スキーマ管理は Flyway |
 | データベース | PostgreSQL 16（AWS RDS）。ユーザー検索に `pg_trgm` を使う |
 | 画像ストレージ | AWS S3。署名付きURLでブラウザから直接アップロード・取得 |
 | 実行環境 | AWS EC2 + ALB（構築するかは未決） |
@@ -86,7 +86,7 @@ ALB の背後に EC2（Spring Boot + Nginx で React を配信）を置き、RDS
 現在：
 
 ```
-docs/       要件定義書・機能一覧・機能定義書・インフラ構成図（正本）
+docs/       要件定義書・機能一覧・機能定義書・インフラ構成図（正本）、docs/api/ API仕様書（OpenAPI。コードから自動生成）
 .claude/    Claude Code の設定とスキル（dev-server-startup / quality-check）
 README.md
 ```
@@ -117,6 +117,7 @@ docs/
 | [機能定義書: ユーザー検索](docs/16_機能定義書_ユーザー検索.md) | 部分一致検索、pg_trgm、エスケープ |
 | [機能定義書: プロフィール](docs/17_機能定義書_プロフィール.md) | プロフィールの表示（S-05）と編集（S-06）、アイコン変更、F-03・F-08・F-17 の仕様 |
 | [インフラ構成図](docs/20_インフラ構成図.md) | ALB / EC2 / RDS / S3 の構成、セキュリティグループ、未決事項 |
+| [API仕様書（OpenAPI）](docs/api/openapi.json) | コードから自動生成した API の仕様。Swagger UI と更新手順は下の「API仕様書（自動生成）」 |
 
 機能を追加・変更するときは、コードと合わせて要件定義書・機能一覧・該当する機能定義書も更新する。
 

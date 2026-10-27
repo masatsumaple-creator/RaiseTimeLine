@@ -53,15 +53,17 @@ frontend（5173）、PostgreSQL（5432）についても同様に、`Get-NetTCPC
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/auth/me
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8080/api/v3/api-docs
 curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173/
 ```
 
-backend は未ログインの `/api/auth/me` が `401`（サーバーが応答している印）、frontend は `200` が返ることを確認する。バックグラウンドで起動する場合はログ（stdout/stderr）を監視し、`Started BackendApplication`（backend）や起動完了ログ（frontend）を確認してから疎通チェックに進む。
+backend は未ログインの `/api/auth/me` が `401`（サーバーが応答している印）、`/api/v3/api-docs`（API 仕様の JSON）が `200`（ログイン不要）、frontend は `200` が返ることを確認する。バックグラウンドで起動する場合はログ（stdout/stderr）を監視し、`Started BackendApplication`（backend）や起動完了ログ（frontend）を確認してから疎通チェックに進む。
 
 ## 関連
 
 - 起動中の backend は、DB が起動していないと Flyway の接続エラーで終了する。先に `docker compose up -d db` を実行する
 - `JWT_SECRET`（32バイト以上）が未設定だと backend は起動しない。`./gradlew bootRun` は未設定のときだけ開発用の既定値を渡す（`backend/build.gradle`）。`java -jar` などで起動するときは環境変数で渡す
 - 画像（アイコン）を実際の S3 で試すときだけ、`S3_BUCKET=<バケット名> ./gradlew bootRun` のように、バケット名を環境変数で渡す（未設定なら画像機能は無効で、アップロードは 503）。認証情報は `~/.aws` のプロファイル `raisetimeline-dev`（`bootRun` が既定で使う）。バケット名と手順は README の「ローカルで画像（S3）を使う」を参照
+- API の確認は Swagger UI（`http://localhost:8080/api/swagger-ui.html`）で行える。backend だけの起動で開ける（frontend は不要）。右上の Authorize に、signup / login で得た `accessToken` を入れると、認証が必要な API も試せる。`SPRINGDOC_ENABLED=false` で起動すると、Swagger UI と API 仕様は開けない（本番用の設定）
 - 画面からの確認は、backend（8080）と frontend（5173）の両方を起動し、`http://localhost:5173/` を開く。frontend は `/api` を 8080 へ中継するだけで、URL の設定ファイルはない。リフレッシュトークンの Cookie は HTTP の開発環境でも動くよう、`REFRESH_COOKIE_SECURE` の既定は `false`（本番は `true`）
 - アクセストークンの期限切れの動作（401 → 自動更新）を確認したいときは、`JWT_EXPIRATION=20s` を付けて backend を起動する（期限は時計ずれの許容なしでちょうどで切れる）
