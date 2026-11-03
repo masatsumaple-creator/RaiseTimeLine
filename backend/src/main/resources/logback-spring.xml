@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  構造化ログ(1 行 1 JSON)を標準出力に出す。全環境で同じ形式。
+  service / env / version は Datadog の統合サービスタグの名前に合わせてあり、Datadog Agent が標準出力を読めば、そのまま取り込める。
+  Datadog の Java トレーサーを付けた場合は、dd.trace_id / dd.span_id が MDC に入り、下の encoder がそのまま出力する。
+-->
+<configuration>
+    <springProperty scope="context" name="LOG_SERVICE" source="app.log.service" defaultValue="raisetimeline-backend"/>
+    <springProperty scope="context" name="LOG_ENV" source="app.log.env" defaultValue="local"/>
+    <springProperty scope="context" name="LOG_VERSION" source="app.log.version" defaultValue="unknown"/>
+
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <!-- springProperty の値(LOG_SERVICE など)が重複して出ないよう、logback のコンテキスト属性は出さない -->
+            <includeContext>false</includeContext>
+            <customFields>{"service":"${LOG_SERVICE}","env":"${LOG_ENV}","version":"${LOG_VERSION}"}</customFields>
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+            </fieldNames>
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <maxDepthPerThrowable>30</maxDepthPerThrowable>
+                <rootCauseFirst>true</rootCauseFirst>
+            </throwableConverter>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="JSON"/>
+    </root>
+</configuration>
