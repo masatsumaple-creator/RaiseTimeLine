@@ -1,10 +1,13 @@
 package com.raisetimeline.backend.service;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 import com.raisetimeline.backend.config.S3Properties;
 import com.raisetimeline.backend.dto.UploadUrlRequest;
 import com.raisetimeline.backend.dto.UploadUrlResponse;
 import com.raisetimeline.backend.exception.ApiException;
 import com.raisetimeline.backend.exception.GlobalExceptionHandler;
+import com.raisetimeline.backend.logging.LogThresholds;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -128,7 +131,9 @@ public class ImageService {
             return cached.url();
         }
         try {
+            long start = System.nanoTime();
             String url = storage.presignGet(key, properties.getExpiration());
+            warnIfSlow("s3.presignGet", key, start, LogThresholds.S3_PRESIGN);
             if (urls.size() >= MAX_CACHED_URLS) {
                 urls.clear();
             }
@@ -137,7 +142,7 @@ public class ImageService {
             return url;
         } catch (RuntimeException e) {
             // 画像が使えなくても、画面は表示名の頭文字で表示できる。一覧や詳細まで失敗させない
-            log.warn("表示用の署名付き URL を作れませんでした: {}", key, e);
+            log.warn("表示用の署名付き URL を作れませんでした", kv("operation", "s3.presignGet"), kv("imageKey", key), e);
             return null;
         }
     }
@@ -161,10 +166,21 @@ public class ImageService {
 
     private void deleteQuietly(String key) {
         try {
+            long start = System.nanoTime();
             storage.delete(key);
+            warnIfSlow("s3.delete", key, start, LogThresholds.S3_DELETE);
             urls.remove(key);
         } catch (RuntimeException e) {
-            log.warn("S3 の画像を消せませんでした(キーを記録します): {}", key, e);
+            log.warn("S3 の画像を消せませんでした(キーを記録します)", kv("operation", "s3.delete"), kv("imageKey", key), e);
+        }
+    }
+
+    /** S3 の呼び出しが閾値より遅ければ、WARN で記録する。 */
+    private static void warnIfSlow(String operation, String key, long startNanos, Duration threshold) {
+        Duration elapsed = Duration.ofNanos(System.nanoTime() - startNanos);
+        if (elapsed.compareTo(threshold) > 0) {
+            log.warn("S3 の呼び出しが遅い", kv("operation", operation), kv("imageKey", key),
+                    kv("durationMs", elapsed.toMillis()), kv("thresholdMs", threshold.toMillis()));
         }
     }
 

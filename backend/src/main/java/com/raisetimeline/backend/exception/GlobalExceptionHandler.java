@@ -1,5 +1,7 @@
 package com.raisetimeline.backend.exception;
 
+import static net.logstash.logback.argument.StructuredArguments.kv;
+
 import com.raisetimeline.backend.dto.ErrorResponse;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -43,6 +45,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApi(ApiException e) {
+        // 想定内のエラー。原因をたどれるよう code を残す(メッセージは利用者向けで、個人情報を含まない)
+        log.warn("業務エラー", kv("errorCode", e.getCode()), kv("status", e.getStatus().value()));
         return ResponseEntity.status(e.getStatus()).body(new ErrorResponse(e.getCode(), e.getMessage(), e.getFieldErrors()));
     }
 
@@ -55,7 +59,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         if (e instanceof AccessDeniedException || e instanceof AuthenticationException) {
             throw e;
         }
-        log.error("想定外の例外", e);
+        log.error("想定外の例外", kv("errorType", e.getClass().getName()), e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse(INTERNAL_ERROR, INTERNAL_ERROR_MESSAGE));
     }
 

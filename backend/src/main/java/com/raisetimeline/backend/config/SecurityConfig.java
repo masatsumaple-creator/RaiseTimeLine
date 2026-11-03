@@ -1,5 +1,6 @@
 package com.raisetimeline.backend.config;
 
+import com.raisetimeline.backend.logging.UserIdMdcFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +16,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
@@ -64,6 +66,8 @@ public class SecurityConfig {
                                 writeJson(response, HttpServletResponse.SC_UNAUTHORIZED, UNAUTHORIZED_BODY))
                         .accessDeniedHandler((request, response, e) ->
                                 writeJson(response, HttpServletResponse.SC_FORBIDDEN, FORBIDDEN_BODY)))
+                // 認証が済んだあとにユーザー ID をログの MDC へ入れる(アクセスログは RequestLoggingFilter が出す)
+                .addFilterAfter(new UserIdMdcFilter(), BearerTokenAuthenticationFilter.class)
                 .httpBasic(basic -> basic.disable())
                 .formLogin(form -> form.disable())
                 .logout(logout -> logout.disable());

@@ -9,6 +9,11 @@ spring:
     enabled: true
 
 app:
+  log:
+    # 構造化ログの全行に付く共通タグ(Datadog の service / env / version と同じ名前)
+    service: ${LOG_SERVICE:raisetimeline-backend}
+    env: ${LOG_ENV:local}
+    version: ${LOG_VERSION:unknown}
   jwt:
     # 署名鍵は必須(未設定なら起動に失敗する)。ローカル開発は gradle bootRun が既定値を渡す
     secret: ${JWT_SECRET:}
