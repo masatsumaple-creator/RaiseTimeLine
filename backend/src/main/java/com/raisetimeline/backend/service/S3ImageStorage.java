@@ -16,7 +16,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 /**
- * AWS S3 を使う置き場。認証情報は AWS の標準の探し方(環境変数、~/.aws のプロファイル、本番では EC2 のロール)に任せる。
+ * AWS S3 を使う置き場。認証情報は AWS の標準の探し方(環境変数、~/.aws のプロファイル、本番では ECS のタスクロール)に任せる。
  * クライアントは、最初に使うときまで認証情報を探さないので、S3 を使わない起動やテストでは AWS に触れない。
  */
 public class S3ImageStorage implements ImageStorage {
