@@ -7,7 +7,8 @@
 | 土台 | VPC・サブネット・セキュリティグループ・S3 エンドポイント・ECR | 済(`network.tf`、`ecr.tf`) |
 | データ | RDS(`rds.tf`)、画像用 S3(`s3_images.tf`)、JWT 鍵の Secrets Manager(`secrets.tf`) | 済 |
 | 実行 | 内部 ALB(`alb.tf`)、ECS Fargate(`ecs.tf`)、IAM(`iam.tf`) | このディレクトリ |
-| 配信 | フロント用 S3(`s3_frontend.tf`)、CloudFront・VPC Origin・画像バケットの CORS(`cloudfront.tf`) | このディレクトリ |
+| 配信 | フロント用 S3(`s3_frontend.tf`)、CloudFront・VPC Origin・画像バケットの CORS(`cloudfront.tf`) | 済 |
+| デプロイ | GitHub Actions 用の OIDC ロール(`github_oidc.tf`)と、`.github/workflows/deploy.yml` | このディレクトリ |
 
 ## 課金について
 
@@ -69,6 +70,23 @@
    課金だけを止めたいときは、`-var app_desired_count=0` で Fargate のタスクを 0 にできる(ALB と RDS は残る)。
 
    tfstate 用のバケット(bootstrap)は、本体を `destroy` したあとに `infra/bootstrap` で `terraform destroy` する(バージョニングが有効なので、空にしてから消す)。
+
+## GitHub Actions でデプロイする
+
+`.github/workflows/deploy.yml` は手動で実行する(Actions タブ → Deploy → Run workflow)。AWS へは OIDC で認証するので、アクセスキーは要らない。ロールは **main ブランチから実行したワークフローだけ**が引き受けられる(`github_oidc.tf`)。
+
+`terraform apply` のあとに、次の値を GitHub のリポジトリ変数(Settings → Secrets and variables → Actions → Variables)へ登録する。どれもシークレットではない。
+
+| 変数 | 値の取り方 |
+| --- | --- |
+| `AWS_ROLE_ARN` | `terraform output -raw github_deploy_role_arn` |
+| `ECR_REPOSITORY` | `terraform output -raw ecr_repository_name` |
+| `ECS_CLUSTER` | `terraform output -raw ecs_cluster_name` |
+| `ECS_SERVICE` | `terraform output -raw ecs_service_name` |
+| `FRONTEND_BUCKET` | `terraform output -raw frontend_bucket` |
+| `CLOUDFRONT_DISTRIBUTION_ID` | `terraform output -raw cloudfront_distribution_id` |
+
+バックエンドは、git の SHA をタグにしてイメージを ECR へ push し、現在のタスク定義のイメージだけ差し替えた新しい版を登録して、ECS サービスを更新する(安定するまで待つ)。そのため、ECS サービスの `task_definition` は Terraform の差分から外してある。アカウントにすでに GitHub の OIDC プロバイダがあるときは、`-var create_github_oidc_provider=false` にする。
 
 ## 注意
 
