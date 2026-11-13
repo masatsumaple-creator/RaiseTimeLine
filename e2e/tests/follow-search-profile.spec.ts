@@ -80,7 +80,7 @@ test.describe('検索・フォロー・プロフィール', () => {
 
     // 検索結果でも自分の行にはフォローボタンが出ない
     await page.goto(`/search?q=${encodeURIComponent(me.user.handle)}`)
-    await expect(page.getByRole('link', { name: me.user.displayName, exact: true })).toBeVisible()
+    await expect(page.getByRole('listitem').getByRole('link', { name: me.user.displayName, exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: /をフォロー/ })).toHaveCount(0)
     void timeline
   })

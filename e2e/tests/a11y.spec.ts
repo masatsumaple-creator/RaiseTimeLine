@@ -4,17 +4,8 @@ import { Api, expect, test } from '../fixtures'
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 
-/**
- * 既知のアプリ側の違反(要デザイン判断)。直したらここから外すこと。
- * - 非アクティブなタブの文字色のコントラスト不足(color-contrast)
- * - 文章中のリンクが、周囲の文字と色以外で区別できない(link-in-text-block)
- */
-const KNOWN_ISSUES = ['.tabs .tab:not(.active)', '.muted > a']
-
 async function expectNoViolations(page: Page, name: string) {
-  let axe = new AxeBuilder({ page }).withTags(TAGS)
-  for (const selector of KNOWN_ISSUES) axe = axe.exclude(selector)
-  const { violations } = await axe.analyze()
+  const { violations } = await new AxeBuilder({ page }).withTags(TAGS).analyze()
   const summary = violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.length}件 例) ${v.nodes[0]?.target.join(' ')}`)
   expect(summary, `${name} のアクセシビリティ違反`).toEqual([])
 }

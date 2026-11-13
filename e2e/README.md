@@ -50,11 +50,6 @@ npm run db:down           # 終わったら DB を削除(データごと)
 - 実行前後に、`e2e_` で始まるユーザーを DB から削除する(`global-setup.ts` / `global-teardown.ts`。外部キーが CASCADE なので投稿等も消える)。残したいときは `E2E_KEEP_DATA=1`。
 - 「全体」タブは並列に動く他のテストの投稿も流れてくる。そこで探す本文は `uniq()` で一意にし、`TimelinePage.findCard()` で続きを読み込みながら探す。
 
-### 既知の問題(a11y)
-`tests/a11y.spec.ts` の `KNOWN_ISSUES` に、アプリ側の違反を除外している。直したら外すこと。
-- 非アクティブなタブ(`.tabs .tab:not(.active)`)の文字色のコントラスト不足(`color-contrast`)
-- 文章中のリンク(`.muted > a`)が、周囲の文字と色以外で区別できない(`link-in-text-block`)
-
 ## 性能テスト
 
 `npm run test:perf`。計測のブレを抑えるため直列(workers=1)。各ケースを `PERF_RUNS` 回(既定 5)実行し、**p75 が閾値以内**であることを検証する。
