@@ -27,3 +27,33 @@ variable "app_port" {
   type        = number
   default     = 8080
 }
+
+variable "db_engine_version" {
+  description = "PostgreSQL のバージョン(メジャーだけ指定すると最新のマイナーが選ばれる)"
+  type        = string
+  default     = "16"
+}
+
+variable "db_instance_class" {
+  description = "RDS のインスタンスクラス(課金を抑えるため最小クラス)"
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "db_allocated_storage" {
+  description = "RDS のストレージ(GB)"
+  type        = number
+  default     = 20
+}
+
+variable "db_name" {
+  description = "データベース名(backend の既定値 DB_URL に合わせる)"
+  type        = string
+  default     = "raisetimeline"
+}
+
+variable "db_username" {
+  description = "DB のマスターユーザー名"
+  type        = string
+  default     = "raisetimeline"
+}

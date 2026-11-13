@@ -27,3 +27,30 @@ output "db_security_group_id" {
 output "ecr_repository_url" {
   value = aws_ecr_repository.backend.repository_url
 }
+
+output "db_endpoint" {
+  description = "RDS のホスト名とポート"
+  value       = aws_db_instance.main.endpoint
+}
+
+output "db_name" {
+  value = aws_db_instance.main.db_name
+}
+
+output "db_master_secret_arn" {
+  description = "DB パスワードを持つ Secrets Manager のシークレット(JSON の password キー)"
+  value       = aws_db_instance.main.master_user_secret[0].secret_arn
+}
+
+output "jwt_secret_arn" {
+  value = aws_secretsmanager_secret.jwt_secret.arn
+}
+
+output "images_bucket" {
+  description = "画像用バケット名(backend の S3_BUCKET)"
+  value       = aws_s3_bucket.images.bucket
+}
+
+output "images_bucket_arn" {
+  value = aws_s3_bucket.images.arn
+}
