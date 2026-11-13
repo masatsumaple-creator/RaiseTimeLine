@@ -4,8 +4,8 @@
 
 | 層 | 内容 | 状態 |
 | --- | --- | --- |
-| 土台 | VPC・サブネット・セキュリティグループ・S3 エンドポイント・ECR | このディレクトリ |
-| データ | RDS、画像用 S3、Secrets Manager | 未 |
+| 土台 | VPC・サブネット・セキュリティグループ・S3 エンドポイント・ECR | 済(`network.tf`、`ecr.tf`) |
+| データ | RDS(`rds.tf`)、画像用 S3(`s3_images.tf`)、JWT 鍵の Secrets Manager(`secrets.tf`) | このディレクトリ |
 | 実行 | 内部 ALB、ECS Fargate、IAM | 未 |
 | 配信 | フロント用 S3、CloudFront(OAC、VPC Origin) | 未 |
 
