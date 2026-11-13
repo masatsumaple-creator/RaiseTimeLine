@@ -1,0 +1,2 @@
+# このファイルを backend.hcl にコピーして、bootstrap の出力(tfstate_bucket)を書く。backend.hcl は Git に入れない
+bucket = "raisetimeline-tfstate-<AWS アカウント ID>"
