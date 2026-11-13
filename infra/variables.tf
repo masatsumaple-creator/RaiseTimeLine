@@ -57,3 +57,27 @@ variable "db_username" {
   type        = string
   default     = "raisetimeline"
 }
+
+variable "image_tag" {
+  description = "ECR のバックエンドイメージのタグ(git の SHA)。ECR のタグは IMMUTABLE"
+  type        = string
+  default     = "latest"
+}
+
+variable "app_cpu" {
+  description = "Fargate タスクの CPU(1024 = 1 vCPU)"
+  type        = number
+  default     = 512
+}
+
+variable "app_memory" {
+  description = "Fargate タスクのメモリ(MiB)。JVM は 75% までをヒープに使う"
+  type        = number
+  default     = 1024
+}
+
+variable "app_desired_count" {
+  description = "Fargate のタスク数。0 にすると課金を止められる(ALB と RDS は残る)"
+  type        = number
+  default     = 1
+}

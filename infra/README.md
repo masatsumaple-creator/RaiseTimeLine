@@ -5,8 +5,8 @@
 | 層 | 内容 | 状態 |
 | --- | --- | --- |
 | 土台 | VPC・サブネット・セキュリティグループ・S3 エンドポイント・ECR | 済(`network.tf`、`ecr.tf`) |
-| データ | RDS(`rds.tf`)、画像用 S3(`s3_images.tf`)、JWT 鍵の Secrets Manager(`secrets.tf`) | このディレクトリ |
-| 実行 | 内部 ALB、ECS Fargate、IAM | 未 |
+| データ | RDS(`rds.tf`)、画像用 S3(`s3_images.tf`)、JWT 鍵の Secrets Manager(`secrets.tf`) | 済 |
+| 実行 | 内部 ALB(`alb.tf`)、ECS Fargate(`ecs.tf`)、IAM(`iam.tf`) | このディレクトリ |
 | 配信 | フロント用 S3、CloudFront(OAC、VPC Origin) | 未 |
 
 ## 課金について
@@ -42,6 +42,20 @@
    terraform apply     # 内容を確認してから
    terraform destroy   # 確認が終わったら必ず
    ```
+
+4. **バックエンドのイメージを push する**
+
+   ECS サービスは ECR のイメージ(`var.image_tag`、既定は `latest`)を起動する。イメージがないと、タスクは起動に失敗して再試行を繰り返す。ECR のタグは `IMMUTABLE` で上書きできないので、別のイメージを出すときは `-var image_tag=<git の SHA>` で新しいタグを指定する。
+
+   ```sh
+   cd backend
+   REPO=$(terraform -chdir=../infra output -raw ecr_repository_url)
+   aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin "${REPO%%/*}"
+   docker build -t "$REPO:latest" .
+   docker push "$REPO:latest"
+   ```
+
+   課金だけを止めたいときは、`-var app_desired_count=0` で Fargate のタスクを 0 にできる(ALB と RDS は残る)。
 
    tfstate 用のバケット(bootstrap)は、本体を `destroy` したあとに `infra/bootstrap` で `terraform destroy` する(バージョニングが有効なので、空にしてから消す)。
 
