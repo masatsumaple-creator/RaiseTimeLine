@@ -2,7 +2,7 @@
   --bg: #f3f5f8;
   --surface: #fff;
   --text: #1a2230;
-  --muted: #6b7686;
+  --muted: #5a6575; /* 背景 #f3f5f8 の上でもコントラスト比 4.5:1 以上(WCAG AA) */
   --line: #e3e7ee;
   --accent: #2563eb;
   --accent-d: #1d4ed8;
@@ -25,6 +25,8 @@ a:hover { text-decoration: underline; }
 h1 { font-size: 20px; margin: 0 0 12px; }
 
 .muted { color: var(--muted); }
+/* 文章中のリンクは、色だけに頼らず下線で区別する(WCAG 1.4.1) */
+.muted a { text-decoration: underline; }
 .center { text-align: center; }
 .empty-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .empty-actions .btn { text-decoration: none; }

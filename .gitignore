@@ -24,3 +24,9 @@ perf/results/*
 !perf/results/.gitkeep
 perf/browser/test-results/
 perf/browser/playwright-report/
+
+# E2E tests (e2e/)
+e2e/test-results/
+e2e/playwright-report/
+e2e/results/*
+!e2e/results/.gitkeep
