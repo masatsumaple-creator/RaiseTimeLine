@@ -1,3 +1,20 @@
+server:
+  # CloudFront と ALB の背後で動くため、X-Forwarded-* を見て元のスキーム(https)とホストを復元する
+  forward-headers-strategy: framework
+
+management:
+  # ALB のヘルスチェック用。/api の配下に置き(CloudFront や proxy が /api だけを流すため)、health だけを公開する
+  endpoints:
+    web:
+      base-path: /api/actuator
+      exposure:
+        include: health
+  endpoint:
+    health:
+      # liveness は DB に依存しない。DB の一時的な障害でタスクが再起動されないよう、ALB は liveness を見る
+      probes:
+        enabled: true
+
 spring:
   application:
     name: backend

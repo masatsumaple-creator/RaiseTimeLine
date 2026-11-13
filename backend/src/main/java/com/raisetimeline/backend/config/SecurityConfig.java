@@ -54,6 +54,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v3/api-docs", "/api/v3/api-docs/**",
                                 "/api/swagger-ui.html", "/api/swagger-ui/**").permitAll()
+                        // ALB のヘルスチェック(詳細は公開しない。management.endpoints で health だけを公開している)
+                        .requestMatchers(HttpMethod.GET, "/api/actuator/health", "/api/actuator/health/**").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> { })
