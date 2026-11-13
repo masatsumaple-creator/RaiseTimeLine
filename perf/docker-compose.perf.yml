@@ -1,0 +1,24 @@
+# パフォーマンステスト専用の PostgreSQL。開発用 DB(docker-compose.yml, 5432)とは
+# コンテナ・ポート・ボリュームをすべて分けてある。
+#   起動:  docker compose -f perf/docker-compose.perf.yml up -d
+#   完全削除(データごと): docker compose -f perf/docker-compose.perf.yml down -v
+services:
+  perf-db:
+    image: postgres:16
+    container_name: raisetimeline-perf-db
+    environment:
+      POSTGRES_DB: raisetimeline_perf
+      POSTGRES_USER: raisetimeline
+      POSTGRES_PASSWORD: raisetimeline
+    ports:
+      - "5433:5432"
+    volumes:
+      - perf-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U raisetimeline -d raisetimeline_perf"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  perf-db-data:

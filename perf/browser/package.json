@@ -1,0 +1,16 @@
+{
+  "name": "raisetimeline-perf-browser",
+  "private": true,
+  "description": "ブラウザ実行のパフォーマンス計測(Playwright)。通常のテスト(npm test)とは独立",
+  "scripts": {
+    "install:browser": "playwright install chromium",
+    "perf": "playwright test",
+    "perf:mobile": "cross-env PERF_PROFILE=mobile playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "24.10.1",
+    "cross-env": "10.1.0",
+    "typescript": "5.9.3"
+  }
+}
