@@ -24,7 +24,7 @@ description: Start this project's backend (Spring Boot), frontend (Vite), and Po
 
 **理由:** ポート番号は複数箇所にハードコードされた前提として使われている。
 - フロントエンド: `frontend/.env.local` の `VITE_API_BASE_URL`（デフォルト `http://localhost:8080`）
-- バックエンド: CORS設定は持たない。開発時は Vite の `/api` プロキシ（target `http://localhost:8080`）で同一オリジン化し、本番（ALB 配下の同一オリジン）と同じ挙動にする
+- バックエンド: CORS設定は持たない。開発時は Vite の `/api` プロキシ（target `http://localhost:8080`）で同一オリジン化し、本番（CloudFront 配下の同一オリジン）と同じ挙動にする
 - DB接続: `.env.example` / `backend/src/main/resources/application.yml` の `localhost:5432`
 
 ここでポート番号がずれると、API疎通失敗やDB接続エラーなど、コードとは無関係な原因で動作確認が壊れる。したがって「空いているポートを探して使う」のではなく「デフォルトポートを空ける」方針を取る。

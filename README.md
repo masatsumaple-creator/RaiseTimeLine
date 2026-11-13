@@ -41,7 +41,7 @@ React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像�
 | バックエンド | Spring Boot 4.0.8（Java 25、Gradle）。REST API、API 仕様書は springdoc-openapi でコードから自動生成、認証は Spring Security + JWT（アクセストークンを Bearer ヘッダーで送り、リフレッシュトークンは HttpOnly Cookie）、DBアクセスは MyBatis、スキーマ管理は Flyway |
 | データベース | PostgreSQL 16（AWS RDS）。ユーザー検索に `pg_trgm` を使う |
 | 画像ストレージ | AWS S3。署名付きURLでブラウザから直接アップロード・取得 |
-| 実行環境 | AWS EC2 + ALB（構築するかは未決） |
+| 実行環境 | AWS CloudFront + S3 + ECS Fargate + RDS（構築するかは未決） |
 
 バージョンは決定済み（Spring Boot 4.0.8 は MyBatis スターターに対応する最新）。変えるときは、この表と要件定義書の「8. 制約・前提条件」に反映する。
 
@@ -79,7 +79,7 @@ React のSPAと、Java / Spring Boot の API、PostgreSQL（AWS RDS）、画像�
 
 ## インフラ構成（前提）
 
-ALB の背後に EC2（Spring Boot + Nginx で React を配信）を置き、RDS（PostgreSQL）と S3 を使う。画像のバイト列だけは、署名付きURLでブラウザと S3 が直接やり取りする。構成図・セキュリティグループの表・未決事項は [docs/20_インフラ構成図.md](docs/20_インフラ構成図.md) を参照。
+EC2 は使わない。React のビルドは S3 + CloudFront で配信し、`/api/*` は CloudFront から内部 ALB を通して ECS Fargate（Spring Boot）へ渡す。DB は RDS（PostgreSQL）。画像のバイト列だけは、署名付きURLでブラウザと S3 が直接やり取りする。構成図・セキュリティグループの表・未決事項は [docs/20_インフラ構成図.md](docs/20_インフラ構成図.md) を参照。
 
 ## リポジトリ構成
 
@@ -118,7 +118,7 @@ docs/
 | [機能定義書: フォロー](docs/15_機能定義書_フォロー.md) | 一方向フォロー、フォロー数・フォロワー数、一覧 |
 | [機能定義書: ユーザー検索](docs/16_機能定義書_ユーザー検索.md) | 部分一致検索、pg_trgm、エスケープ |
 | [機能定義書: プロフィール](docs/17_機能定義書_プロフィール.md) | プロフィールの表示（S-05）と編集（S-06）、アイコン変更、F-03・F-08・F-17 の仕様 |
-| [インフラ構成図](docs/20_インフラ構成図.md) | ALB / EC2 / RDS / S3 の構成、セキュリティグループ、未決事項 |
+| [インフラ構成図](docs/20_インフラ構成図.md) | CloudFront / S3 / ECS Fargate / RDS の構成、セキュリティグループ、未決事項 |
 | [API仕様書（OpenAPI）](docs/api/openapi.json) | コードから自動生成した API の仕様。Swagger UI と更新手順は下の「API仕様書（自動生成）」 |
 
 機能を追加・変更するときは、コードと合わせて要件定義書・機能一覧・該当する機能定義書も更新する。
@@ -152,7 +152,6 @@ cd backend
 | 要件定義書（画面遷移図・ER図を含む） | https://claude.ai/code/artifact/eb8ca9c3-5561-437e-8423-f79721ef7c30 |
 | 機能一覧 | https://claude.ai/code/artifact/25b6bf79-48ea-4057-b5e1-c31d3248859f |
 | 機能定義書: 画像投稿（アップロードの流れ図を含む） | https://claude.ai/code/artifact/69daa1c3-589e-43d8-aecf-2f0c5bae4135 |
-| インフラ構成図（AWS構成図を含む） | https://claude.ai/code/artifact/4d3323f1-326c-4e0d-a0d8-04f8cccce152 |
 
 ## ローカルで画像（S3）を使う
 
@@ -164,7 +163,7 @@ cd backend
 | `AWS_PROFILE` | 認証情報のプロファイル。`./gradlew bootRun` は、未設定なら `raisetimeline-dev` を使う |
 | `S3_REGION` | 既定は `ap-northeast-1` |
 
-- 認証情報は、AWS の標準の探し方（環境変数、`~/.aws` のプロファイル、本番では EC2 のロール）に任せる。**管理者権限のキーは使わず**、開発用バケットだけを操作できる IAM ユーザー（権限は `s3:PutObject` / `GetObject` / `DeleteObject` と、バケットへの `s3:ListBucket`）のキーを、プロファイル `raisetimeline-dev` に入れて使う。
+- 認証情報は、AWS の標準の探し方（環境変数、`~/.aws` のプロファイル、本番では ECS のタスクロール）に任せる。**管理者権限のキーは使わず**、開発用バケットだけを操作できる IAM ユーザー（権限は `s3:PutObject` / `GetObject` / `DeleteObject` と、バケットへの `s3:ListBucket`）のキーを、プロファイル `raisetimeline-dev` に入れて使う。
 - バケットは、公開アクセスをすべてブロックし、SSE-S3 で暗号化し、CORS は `http://localhost:5173` だけを許可する。バージョニング・ログ・KMS は、課金が増えるので使わない。
 - 起動例: `S3_BUCKET=<バケット名> ./gradlew bootRun`（`backend/` で実行）
 

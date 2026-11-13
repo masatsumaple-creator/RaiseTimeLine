@@ -38,7 +38,7 @@ springdoc:
   # 開発では常に有効。本番は SPRINGDOC_ENABLED=false で API 仕様と Swagger UI を無効にする
   api-docs:
     enabled: ${SPRINGDOC_ENABLED:true}
-    # 既存のプロキシ(Vite・ALB)が /api だけをバックエンドへ流すため、/api の配下に置く
+    # 既存のプロキシ(Vite・CloudFront)が /api だけをバックエンドへ流すため、/api の配下に置く
     path: /api/v3/api-docs
   swagger-ui:
     enabled: ${SPRINGDOC_ENABLED:true}
