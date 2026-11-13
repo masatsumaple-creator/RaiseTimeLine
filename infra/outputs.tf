@@ -54,3 +54,16 @@ output "images_bucket" {
 output "images_bucket_arn" {
   value = aws_s3_bucket.images.arn
 }
+
+output "alb_dns_name" {
+  description = "内部 ALB の DNS 名(VPC の内側からだけ届く)"
+  value       = aws_lb.main.dns_name
+}
+
+output "ecs_cluster_name" {
+  value = aws_ecs_cluster.main.name
+}
+
+output "ecs_service_name" {
+  value = aws_ecs_service.app.name
+}
