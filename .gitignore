@@ -30,3 +30,14 @@ e2e/test-results/
 e2e/playwright-report/
 e2e/results/*
 !e2e/results/.gitkeep
+
+# Terraform (infra/)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+backend.hcl
+crash.log
+*_override.tf
+*_override.tf.json

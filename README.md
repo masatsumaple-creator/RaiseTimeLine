@@ -87,6 +87,7 @@ EC2 は使わない。React のビルドは S3 + CloudFront で配信し、`/api
 
 ```
 docs/       要件定義書・機能一覧・機能定義書・インフラ構成図（正本）、docs/api/ API仕様書（OpenAPI。コードから自動生成）
+infra/      AWS 構成の Terraform（使い方は infra/README.md）
 .claude/    Claude Code の設定とスキル（dev-server-startup / quality-check）
 README.md
 ```
