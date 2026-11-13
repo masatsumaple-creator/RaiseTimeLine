@@ -18,3 +18,9 @@ backend/build/
 backend/.gradle/
 frontend/dist/
 *.log
+
+# Performance tests (perf/)
+perf/results/*
+!perf/results/.gitkeep
+perf/browser/test-results/
+perf/browser/playwright-report/
