@@ -81,3 +81,15 @@ variable "app_desired_count" {
   type        = number
   default     = 1
 }
+
+variable "github_repository" {
+  description = "デプロイを許可する GitHub リポジトリ(owner/name)。OIDC のロールはこのリポジトリの main ブランチだけが引き受けられる"
+  type        = string
+  default     = "masatsumaple-creator/RaiseTimeLine"
+}
+
+variable "create_github_oidc_provider" {
+  description = "GitHub の OIDC プロバイダを作るか。アカウントにすでにあるなら false(1 アカウントに 1 つだけ作れる)"
+  type        = bool
+  default     = true
+}

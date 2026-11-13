@@ -75,5 +75,10 @@ resource "aws_ecs_service" "app" {
     container_port   = var.app_port
   }
 
+  # デプロイ(GitHub Actions)がタスク定義を新しい版に差し替えるため、Terraform はその差分を戻さない
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+
   depends_on = [aws_lb_listener.http]
 }

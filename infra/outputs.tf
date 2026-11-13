@@ -82,3 +82,15 @@ output "frontend_bucket" {
   description = "frontend/dist/ を置くバケット"
   value       = aws_s3_bucket.frontend.bucket
 }
+
+# --- GitHub のリポジトリ変数(Settings → Secrets and variables → Actions → Variables)に登録する値 ---
+
+output "ecr_repository_name" {
+  description = "リポジトリ変数 ECR_REPOSITORY"
+  value       = aws_ecr_repository.backend.name
+}
+
+output "github_deploy_role_arn" {
+  description = "リポジトリ変数 AWS_ROLE_ARN"
+  value       = aws_iam_role.github_deploy.arn
+}
