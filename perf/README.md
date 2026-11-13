@@ -111,6 +111,20 @@ npx playwright test timeline          # 1 つだけ
 
 `frontend/lighthouse.md` を参照。
 
+### 6. レポートの作成
+
+`perf/results/` にある結果(k6 の JSON と、`browser/` の Playwright の JSON)から Markdown のレポートを作る。**テストは再実行しない**。ホストの Node.js だけで動く。
+
+```powershell
+node perf/report.mjs                                  # perf/results/report.md に出力
+node perf/report.mjs --out docs/22_性能測定結果.md    # ベースラインとして docs/ に残すとき
+```
+
+- k6(smoke / load / auth / stress / spike)ごとに、エンドポイント別の応答時間(平均・中央値・p90・p95・最大)と、p95 の合否、リクエスト数・エラー率・チェック成功率を出す
+- ブラウザ計測は、テストごとに中央値・p75・最大を出す(CPU 制限を変えた desktop / mobile も別々に出る)
+- 結果ファイルは、同じ名前のテストを実行するたびに上書きされる。比較したい結果は先にコピーするか、`--out` で別名に出力しておく
+- `perf/results/` は `.gitignore` 対象なので、残したいレポートだけを `--out` で `docs/` に出してコミットする
+
 ## 後始末
 
 | やりたいこと | コマンド |
