@@ -67,3 +67,18 @@ output "ecs_cluster_name" {
 output "ecs_service_name" {
   value = aws_ecs_service.app.name
 }
+
+output "app_url" {
+  description = "アプリの URL(CloudFront の既定ドメイン)"
+  value       = "https://${aws_cloudfront_distribution.main.domain_name}"
+}
+
+output "cloudfront_distribution_id" {
+  description = "デプロイ後のキャッシュ削除(invalidation)に使う"
+  value       = aws_cloudfront_distribution.main.id
+}
+
+output "frontend_bucket" {
+  description = "frontend/dist/ を置くバケット"
+  value       = aws_s3_bucket.frontend.bucket
+}

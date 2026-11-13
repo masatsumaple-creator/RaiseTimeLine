@@ -7,7 +7,7 @@
 | 土台 | VPC・サブネット・セキュリティグループ・S3 エンドポイント・ECR | 済(`network.tf`、`ecr.tf`) |
 | データ | RDS(`rds.tf`)、画像用 S3(`s3_images.tf`)、JWT 鍵の Secrets Manager(`secrets.tf`) | 済 |
 | 実行 | 内部 ALB(`alb.tf`)、ECS Fargate(`ecs.tf`)、IAM(`iam.tf`) | このディレクトリ |
-| 配信 | フロント用 S3、CloudFront(OAC、VPC Origin) | 未 |
+| 配信 | フロント用 S3(`s3_frontend.tf`)、CloudFront・VPC Origin・画像バケットの CORS(`cloudfront.tf`) | このディレクトリ |
 
 ## 課金について
 
@@ -54,6 +54,17 @@
    docker build -t "$REPO:latest" .
    docker push "$REPO:latest"
    ```
+
+5. **画面(React のビルド)を置く**
+
+   ```sh
+   cd frontend && npm ci && npm run build
+   aws s3 sync dist/ "s3://$(terraform -chdir=../infra output -raw frontend_bucket)/" --delete
+   aws cloudfront create-invalidation --paths '/*' \
+     --distribution-id "$(terraform -chdir=../infra output -raw cloudfront_distribution_id)"
+   ```
+
+   アプリの URL は `terraform output app_url`(`https://xxxx.cloudfront.net`)。画面と API が同じドメインなので、フロントの設定変更は要らない。
 
    課金だけを止めたいときは、`-var app_desired_count=0` で Fargate のタスクを 0 にできる(ALB と RDS は残る)。
 
