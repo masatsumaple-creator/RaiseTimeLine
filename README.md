@@ -96,6 +96,8 @@ README.md
 ```
 backend/    Spring Boot API（実装済み）
 frontend/   React フロントエンド（認証画面とタイムラインを実装済み）
+e2e/        E2Eテスト（Playwright。機能・a11y・セキュリティ・性能。実行方法は e2e/README.md）
+perf/       負荷・性能テスト（k6 / EXPLAIN / ブラウザ計測。手動実行）
 infra/      インフラ定義（構築する場合）
 docs/
 ```
