@@ -6,9 +6,9 @@
 | --- | --- | --- |
 | 土台 | VPC・サブネット・セキュリティグループ・S3 エンドポイント・ECR | 済(`network.tf`、`ecr.tf`) |
 | データ | RDS(`rds.tf`)、画像用 S3(`s3_images.tf`)、JWT 鍵の Secrets Manager(`secrets.tf`) | 済 |
-| 実行 | 内部 ALB(`alb.tf`)、ECS Fargate(`ecs.tf`)、IAM(`iam.tf`) | このディレクトリ |
+| 実行 | 内部 ALB(`alb.tf`)、ECS Fargate(`ecs.tf`)、IAM(`iam.tf`) | 済 |
 | 配信 | フロント用 S3(`s3_frontend.tf`)、CloudFront・VPC Origin・画像バケットの CORS(`cloudfront.tf`) | 済 |
-| デプロイ | GitHub Actions 用の OIDC ロール(`github_oidc.tf`)と、`.github/workflows/deploy.yml` | このディレクトリ |
+| デプロイ | GitHub Actions 用の OIDC ロール(`github_oidc.tf`)と、`.github/workflows/deploy.yml` | 済 |
 
 ## 課金について
 
