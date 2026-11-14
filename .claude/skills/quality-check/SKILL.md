@@ -1,6 +1,6 @@
 ---
 name: quality-check
-description: Run this project's full quality audit — frontend ESLint (installing/fixing the config if missing), a manual backend code-quality review (no static analysis tool is configured), a Terraform quality check (fmt/validate + manual review) for infra/, and a doc-vs-implementation consistency check against docs/requirements/*.md and the READMEs. Use whenever asked for a quality check, lint check, code review across the whole project, or to verify the requirements/screen-design/infrastructure docs still match the actual backend/frontend/infra implementation.
+description: Run this project's full quality audit — frontend ESLint (installing/fixing the config if missing), a backend check (Checkstyle/SpotBugs plus a manual code-quality review), a Terraform quality check (fmt/validate + manual review) for infra/, and a doc-vs-implementation consistency check against docs/*.md (00_要件定義書, 01_機能一覧, 1x_機能定義書, 20_インフラ構成図, 21_ログ設計) and the READMEs. Use whenever asked for a quality check, lint check, code review across the whole project, or to verify the requirements/screen-design/infrastructure docs still match the actual backend/frontend/infra implementation.
 ---
 
 # 品質チェック（フロント lint + バックエンド手動レビュー + Terraform + ドキュメント整合性）
@@ -72,7 +72,7 @@ npx tsc -b
 
 ## 2. バックエンド（`backend/`）
 
-Checkstyle/Spotless/PMD等の静的解析ツールは導入されていない（`backend/build.gradle` のpluginsを確認して、導入されていれば代わりにそれを実行する）。導入されていない場合は、以下の観点でコードを直接読んでレビューする。新規ツール導入は依頼されない限り行わない。
+静的解析は Checkstyle と SpotBugs を導入済み（`backend/build.gradle`、ルールは `backend/config/`）。まず `cd backend && ./gradlew checkstyleMain checkstyleTest spotbugsMain` を実行し、違反があれば直す（CI と同じ）。そのうえで、ツールで拾えない以下の観点でコードを直接読んでレビューする。新規ツール導入は依頼されない限り行わない。
 
 - **サービス層の有無**: `controller/` のクラスが `mapper/`（MyBatis）を直接操作していないか（[AuthController.java](../../../backend/src/main/java/com/raisetimeline/backend/controller/AuthController.java) など）。ビジネスロジックがController内に埋め込まれていないか。
 - **例外処理の一元化**: `@ControllerAdvice`/`@ExceptionHandler` があるか。なければ、`ResponseStatusException`や手動nullチェックがControllerごとにバラバラに書かれていないか。
@@ -112,15 +112,15 @@ terraform validate
 
 ## 4. ドキュメント整合性チェック
 
-`docs/requirements.md`とその配下（`docs/requirements/*.md`）、`docs/infrastructure.md`（存在する場合）、および `README.md` / `backend/README.md` / `frontend/README.md` は、**`backend`/`frontend`（Spring Boot + React + PostgreSQL）+ `infra`（Terraform）の単一実装**を前提に読む。「未実装」「対応予定」等の記述は実装が先行して古くなっていることが多いため、必ず実装側と突き合わせる。
+`docs/` 配下の Markdown（`00_要件定義書.md`、`01_機能一覧.md`、`1*_機能定義書_*.md`、`20_インフラ構成図.md`、`21_ログ設計と閾値.md`）、および `README.md` / `infra/README.md` / `e2e/README.md` / `perf/README.md` / `mock/README.md` は、**`backend`/`frontend`（Spring Boot + React + PostgreSQL）+ `infra`（Terraform）の単一実装**を前提に読む。「未実装」「対応予定」等の記述は実装が先行して古くなっていることが多いため、必ず実装側と突き合わせる。
 
 チェック手順：
 1. `backend/src/main/java/.../controller/*.java` の実際のエンドポイント一覧を洗い出す。
 2. `frontend/src/components/`・`frontend/src/api/` で実装済みの機能（作成/編集/削除/D&D/検索/並び替え等）を洗い出す。
 3. `infra/`配下のTerraformリソース構成を洗い出す（`docs/infrastructure.md`が存在する場合、構成図・ディレクトリ構成の説明と実際のリソース定義が一致しているか）。
 4. API 仕様書（`docs/api/openapi.json`）が最新か確認する。`cd backend && ./gradlew generateOpenApi` を実行し、`git diff docs/api` に差分が出たら、Controller / DTO の変更に仕様書が追従していない。生成し直した仕様書を残す。あわせて、機能定義書（`docs/1*_*.md`）の API の表のパス・認証・成功/失敗が、仕様書と一致しているか突き合わせる（食い違う場合は仕様書が正）
-5. 上記1〜3と、`docs/requirements/data-model.md`（ER図と実装の差分）、`docs/requirements/roadmap.md`（実装済み機能が「候補」のまま残っていないか）、各READMEの「対応済み/未対応」記述を突き合わせ、ズレていれば実態に合わせて修正する。
+5. 上記1〜3と、要件定義書の「7. データモデル」と Flyway の `db/migration/`（テーブル・列の差分）、機能一覧の「状態」と要件定義書の「9. 今後の拡張候補」「未決事項」（実装済み・決定済みのものが残っていないか）、要件定義書の改訂履歴（最新版が README の記載と一致するか）、各READMEの「対応済み/未対応」記述を突き合わせ、ズレていれば実態に合わせて修正する。
 
 ## 参考
 
-- 直近の実行例: `README.md` / `backend/README.md` / `frontend/README.md` / `docs/requirements/data-model.md` / `docs/requirements/roadmap.md` の更新、および `frontend/eslint.config.js` の新規導入。
+- 直近の実行例: README・要件定義書・インフラ構成図・`infra/README.md` の「構築するかは未決」等の古い記述の更新。
